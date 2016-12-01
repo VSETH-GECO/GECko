@@ -70,7 +70,12 @@ public class CommandHandler implements IListener<MessageReceivedEvent> {
         if (command != null) {
             if (!command.isMentionCommand() && (!msg.getChannel().isPrivate() || command.isAllowPrivateMessage())) {
                 if (command.isForcePrivateReply()) {
-                    msg = injectPrivateChannel(msg);
+                    IMessage oldmsg = msg;
+                    msg = injectPrivateChannel(oldmsg);
+
+                    if (command.isRemoveAfterCall()) {
+                        CommandUtils.deleteMessage(oldmsg);
+                    }
                 }
 
                 if (command.getPermissions().isUserPermitted(msg.getGuild(), msg.getAuthor())) {
@@ -101,20 +106,21 @@ public class CommandHandler implements IListener<MessageReceivedEvent> {
      * @return the message after injection
      */
     private static IMessage injectPrivateChannel(IMessage msg) {
-        return (IMessage) RequestBuffer.request(() -> {
+        return RequestBuffer.request(() -> {
             try {
                 List<Embed> implEmbedded = msg.getEmbedded().stream().map(intfEmbedded -> (Embed) intfEmbedded).collect(Collectors.toList());
-
-                return new Message(msg.getClient(), msg.getID(), msg.getContent(), msg.getAuthor(), msg.getAuthor().getOrCreatePMChannel(),
+                IMessage message = new Message(msg.getClient(), msg.getID(), msg.getContent(), msg.getAuthor(), msg.getAuthor().getOrCreatePMChannel(),
                         msg.getTimestamp(), msg.getEditedTimestamp().orElse(null), msg.mentionsEveryone(),
                         ((Message) msg).getRawMentions(), ((Message) msg).getRawRoleMentions(), msg.getAttachments(),
                         msg.isPinned(), implEmbedded, msg.getReactions(), msg.getWebhookID());
+
+                return message;
             } catch (DiscordException e) {
                 GECkO.logger.error("[CommandHandler] Could not inject private channel.");
                 e.printStackTrace();
-            }
 
-            return null;
-        });
+                return null;
+            }
+        }).get();
     }
 }

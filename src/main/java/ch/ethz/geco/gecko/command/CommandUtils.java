@@ -52,16 +52,18 @@ public class CommandUtils {
      * @param msg the message which triggered this command
      */
     public static void deleteMessage(IMessage msg) {
-        RequestBuffer.request(() -> {
-            try {
-                msg.delete();
-            } catch (MissingPermissionsException e) {
-                GECkO.logger.error("[CommandUtils] Missing permissions to delete command message.");
-                e.printStackTrace();
-            } catch (DiscordException e) {
-                GECkO.logger.error("[CommandUtils] Could not delete command message: " + e.getErrorMessage());
-                e.printStackTrace();
-            }
-        });
+        if (!msg.getChannel().isPrivate()) {
+            RequestBuffer.request(() -> {
+                try {
+                    msg.delete();
+                } catch (MissingPermissionsException e) {
+                    GECkO.logger.error("[CommandUtils] Missing permissions to delete command message.");
+                    e.printStackTrace();
+                } catch (DiscordException e) {
+                    GECkO.logger.error("[CommandUtils] Could not delete command message: " + e.getErrorMessage());
+                    e.printStackTrace();
+                }
+            });
+        }
     }
 }

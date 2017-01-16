@@ -20,6 +20,7 @@
 package ch.ethz.geco.gecko.command;
 
 import ch.ethz.geco.gecko.command.core.Ping;
+import ch.ethz.geco.gecko.command.vote.CVote;
 
 /**
  * This class is just for having all registered commands in one place
@@ -30,5 +31,6 @@ public class CommandBank {
      */
     public static void registerCommands() {
         CommandRegistry.registerCommand(new Ping());
+        CommandRegistry.registerCommand(new CVote());
     }
 }

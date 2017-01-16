@@ -23,16 +23,24 @@ import ch.ethz.geco.gecko.command.Command;
 import ch.ethz.geco.gecko.command.CommandUtils;
 import sx.blah.discord.handle.obj.IMessage;
 
+import java.time.ZoneOffset;
 import java.util.List;
 
+/**
+ * Really simple command to check if bot is still responsive
+ */
 public class Ping extends Command {
     public Ping() {
-        this.setName("ping");
+        this.setNames(new String[]{"ping", "p"});
         this.setDescription("Used to test if bot is still responsive.");
     }
 
     @Override
     public void execute(IMessage msg, List<String> args) {
-        CommandUtils.respond(msg, "Pong!");
+        IMessage pongMsg = CommandUtils.respond(msg, "Pong!");
+
+        long millis = pongMsg.getTimestamp().atZone(ZoneOffset.UTC).toInstant().toEpochMilli() - msg.getTimestamp().atZone(ZoneOffset.UTC).toInstant().toEpochMilli();
+
+        CommandUtils.editMessage(pongMsg, "Pong! <" + millis + "ms>");
     }
 }

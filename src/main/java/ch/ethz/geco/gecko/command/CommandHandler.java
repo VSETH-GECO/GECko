@@ -72,10 +72,6 @@ public class CommandHandler implements IListener<MessageReceivedEvent> {
                 if (command.isForcePrivateReply()) {
                     IMessage oldmsg = msg;
                     msg = injectPrivateChannel(oldmsg);
-
-                    if (command.isRemoveAfterCall()) {
-                        CommandUtils.deleteMessage(oldmsg);
-                    }
                 }
 
                 if (command.getPermissions().isUserPermitted(msg.getGuild(), msg.getAuthor())) {

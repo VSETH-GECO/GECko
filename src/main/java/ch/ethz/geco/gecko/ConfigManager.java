@@ -101,6 +101,7 @@ public class ConfigManager {
         addCoreField("token", "Please specify the bot token: ");
         addCoreField("mainChannelID", "Please specify the main channel ID: ");
         addCoreField("defaultPrefix", "Please specify a default command prefix: ");
+        addCoreField("timezone", "Please specify the timezone of the bot: ");
     }
 
     /**

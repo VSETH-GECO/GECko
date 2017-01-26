@@ -20,12 +20,14 @@
 package ch.ethz.geco.gecko.command.vote;
 
 import ch.ethz.geco.gecko.command.CommandUtils;
+import org.apache.commons.lang3.StringUtils;
 import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IReaction;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.time.ZonedDateTime;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Just a simple vote data structure
@@ -33,31 +35,39 @@ import java.util.ArrayList;
 public class Vote {
     private IMessage message;
     private String question;
-    private ArrayList<String> answers;
-    private ArrayList<IReaction> validReactions;
-    private LocalDateTime timelimit;
+    private List<String> answers;
+    private Map<String, IReaction> reactions;
+    private ZonedDateTime timelimit;
 
-    public Vote(IChannel channel, String question, ArrayList<String> answers, LocalDateTime timelimit) {
+    public Vote(IChannel channel, String question, List<String> answers, ZonedDateTime timelimit) {
         this.question = question;
         this.answers = answers;
         this.timelimit = timelimit;
 
-        message = CommandUtils.respond(channel, "Test");
+        String answerString = "";
+        for (String answer : answers) {
+            answerString += StringUtils.capitalize(answer) + ": React to set a reaction for this answer.\n";
+        }
+        message = CommandUtils.respond(channel, "--- " + StringUtils.capitalize(question) + " ---\n\n" + answerString + "\n" + status);
+
+        /**
+         * TODO: Add temporary reactionAdd listener to check for added reactions
+         */
     }
 
     public String getQuestion() {
         return question;
     }
 
-    public ArrayList<String> getAnswers() {
+    public List<String> getAnswers() {
         return answers;
     }
 
-    public ArrayList<IReaction> getValidReactions() {
-        return validReactions;
+    public Map<String, IReaction> getReactions() {
+        return reactions;
     }
 
-    public LocalDateTime getTimelimit() {
+    public ZonedDateTime getTimelimit() {
         return timelimit;
     }
 

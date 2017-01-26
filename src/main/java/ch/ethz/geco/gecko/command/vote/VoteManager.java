@@ -21,10 +21,8 @@ package ch.ethz.geco.gecko.command.vote;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.time.ZonedDateTime;
+import java.util.*;
 
 /**
  * Manages and stores the votes of all channels
@@ -33,7 +31,7 @@ public class VoteManager {
     /**
      * A map of all channel ids and their votes
      */
-    private static Map<String, Vote> currentVotes = new HashMap<>();
+    private static List<Vote> currentVotes = new ArrayList<>();
 
     /**
      * Starts the periodic vote check
@@ -48,44 +46,24 @@ public class VoteManager {
     }
 
     /**
-     * Returns whether or not there is already a vote in the given channel.
+     * Adds a vote to the vote manager. As soon as a vote was added, it will automatically end after expiring.
      *
-     * @param channelID the channel to check passed as channel ID
-     * @return whether or not there is a vote in that channel
+     * @param vote the vote to add
      */
-    public static boolean hasVote(String channelID) {
-        return currentVotes.containsKey(channelID);
-    }
-
-    /**
-     * Returns the vote of the specified channel ID
-     *
-     * @param channelID the channel to check passed as channel ID
-     * @return the vote mapping the specified channel ID or null if there is no vote
-     */
-    public static Vote getVote(String channelID) {
-        return currentVotes.get(channelID);
-    }
-
-    /**
-     * Sets the vote for the specified channel ID. This will replace old votes if there are any.
-     *
-     * @param channelID the channel to modify passed as channel ID
-     * @param vote      the vote to set
-     */
-    public static void setVote(String channelID, Vote vote) {
-        currentVotes.put(channelID, vote);
+    public static void addVote(Vote vote) {
+        currentVotes.add(vote);
     }
 
     /**
      * Checks if one of the current vote has finished
      */
     private static void checkVotes() {
-        for (Map.Entry<String, Vote> vote : currentVotes.entrySet()) {
+        for (Vote vote : currentVotes) {
             // If we exceeded the time limit
-            if (LocalDateTime.now(Clock.systemUTC()).isAfter(vote.getValue().getTimelimit())) {
+            if (ZonedDateTime.now(Clock.systemUTC()).isAfter(vote.getTimelimit())) {
                 // End vote
-                vote.getValue().endVote();
+                vote.endVote();
+                currentVotes.remove(vote);
             }
         }
     }

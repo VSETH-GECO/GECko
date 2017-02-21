@@ -89,7 +89,7 @@ public class Update extends Command {
             }
 
             // The local repo should be up-to-date now
-
+            // TODO: Build process
         } else {
             GECkO.logger.error("[Update] Could not create new directory for local git repo.");
         }

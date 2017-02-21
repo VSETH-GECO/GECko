@@ -26,6 +26,7 @@ import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IReaction;
 
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -48,7 +49,16 @@ public class Vote {
         for (String answer : answers) {
             answerString += StringUtils.capitalize(answer) + ": React to set a reaction for this answer.\n";
         }
-        message = CommandUtils.respond(channel, "--- " + StringUtils.capitalize(question) + " ---\n\n" + answerString + "\n" + status);
+        message = CommandUtils.respond(channel, "--- " + StringUtils.capitalize(question) + " ---\n" + answerString + "\n\n" + "Ends at: " + timelimit.format(DateTimeFormatter.RFC_1123_DATE_TIME));
+        /**
+         * --- Bla? ---
+         * 1) Ja:   React to this message to set a reaction for this answer.
+         * 2) Nein: ...
+         * 3) Vllt: ...
+         *
+         * Ends at: Tue, 3 Jun 2008 11:05:30 GMT
+         */
+
 
         /**
          * TODO: Add temporary reactionAdd listener to check for added reactions

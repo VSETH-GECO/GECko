@@ -95,7 +95,7 @@ public class CVote extends Command {
                     VoteManager.addVote(newVote);
                 }
             } catch (DateTimeParseException e) {
-                CommandUtils.respond(msg, "Please give the the date/time format I requested. I'm not Wolfram Alpha.");
+                CommandUtils.respond(msg, "Please give me the date/time format I requested. I'm not Wolfram Alpha.");
             }
         } else {
             printUsage(msg);

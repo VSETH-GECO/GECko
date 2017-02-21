@@ -52,53 +52,48 @@ public class GECkO {
     public static final CommandHandler commandHandler = new CommandHandler();
 
     public static void main(String[] args) {
-        if (args.length >= 1) {
-            // Init message
-            logger.info("GECkO v0.0.1");
-            logger.info("The official GECO Discord bot.");
+        // Init message
+        logger.info("GECkO v0.0.1");
+        logger.info("The official GECO Discord bot.");
 
-            // Load config files
-            try {
-                ConfigManager.loadConfig();
-                ConfigManager.addCoreFields();
-                ConfigManager.checkCoreFields();
-                ConfigManager.saveConfig();
-            } catch (IOException e) {
-                logger.error("Could not load or create config files: " + e.getMessage());
-                e.printStackTrace();
-                logger.info("Shutting down...");
-                System.exit(0);
-            }
-
-            // Add shutdown hook
-            Runtime.getRuntime().addShutdownHook(new Thread(GECkO::preShutdown));
-
-            ClientBuilder builder = new ClientBuilder();
-            if(args[0].equals("-p")) {  // User wants to set a custom prefix
-                CommandHandler.setDefaultPrefix(args[1]);
-
-                try {
-                    discordClient = builder.withToken(ConfigManager.getProperties().getProperty("token")).login();
-                } catch (DiscordException e) {
-                    logger.error("Failed to login: " + e.getErrorMessage());
-                }
-            } else {    // User uses default prefix
-                CommandHandler.setDefaultPrefix(ConfigManager.getProperties().getProperty("defaultPrefix"));
-
-                try {
-                    discordClient = builder.withToken(ConfigManager.getProperties().getProperty("token")).login();
-                } catch (DiscordException e) {
-                    logger.error("Failed to login: " + e.getErrorMessage());
-                }
-            }
-
-            // Register default event handler
-            EventDispatcher dispatcher = discordClient.getDispatcher();
-            dispatcher.registerListener(new EventHandler());
-        } else {
-            System.out.println("Usage: java -jar GECkO.jar [-p <prefix>]");
+        // Load config files
+        try {
+            ConfigManager.loadConfig();
+            ConfigManager.addCoreFields();
+            ConfigManager.checkCoreFields();
+            ConfigManager.saveConfig();
+        } catch (IOException e) {
+            logger.error("Could not load or create config files: " + e.getMessage());
+            e.printStackTrace();
+            logger.info("Shutting down...");
             System.exit(0);
         }
+
+        // Add shutdown hook
+        Runtime.getRuntime().addShutdownHook(new Thread(GECkO::preShutdown));
+
+        ClientBuilder builder = new ClientBuilder();
+        if (args.length >= 2 && args[0].equals("-p")) {  // User wants to set a custom prefix
+            CommandHandler.setDefaultPrefix(args[1]);
+
+            try {
+                discordClient = builder.withToken(ConfigManager.getProperties().getProperty("token")).login();
+            } catch (DiscordException e) {
+                logger.error("Failed to login: " + e.getErrorMessage());
+            }
+        } else {    // User uses default prefix
+            CommandHandler.setDefaultPrefix(ConfigManager.getProperties().getProperty("defaultPrefix"));
+
+            try {
+                discordClient = builder.withToken(ConfigManager.getProperties().getProperty("token")).login();
+            } catch (DiscordException e) {
+                logger.error("Failed to login: " + e.getErrorMessage());
+            }
+        }
+
+        // Register default event handler
+        EventDispatcher dispatcher = discordClient.getDispatcher();
+        dispatcher.registerListener(new EventHandler());
     }
 
     /**

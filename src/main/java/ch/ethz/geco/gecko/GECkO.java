@@ -46,6 +46,11 @@ public class GECkO {
      */
     public static final org.slf4j.Logger logger = LoggerFactory.getLogger(GECkO.class);
 
+    /**
+     * The command handler of the bot.
+     */
+    public static final CommandHandler commandHandler = new CommandHandler();
+
     public static void main(String[] args) {
         if (args.length >= 1) {
             // Init message

@@ -17,23 +17,25 @@
  * For more information, please refer to <http://unlicense.org>
  */
 
-package ch.ethz.geco.gecko.command;
+package ch.ethz.geco.gecko.command.core;
 
-import ch.ethz.geco.gecko.command.core.*;
-import ch.ethz.geco.gecko.command.vote.CVote;
+import ch.ethz.geco.gecko.GECkO;
+import ch.ethz.geco.gecko.command.Command;
+import ch.ethz.geco.gecko.command.CommandHandler;
+import sx.blah.discord.handle.obj.IMessage;
 
-/**
- * This class is just for having all registered commands in one place
- */
-public class CommandBank {
-    /**
-     * Registers all commands in the CommandRegistry
-     */
-    public static void registerCommands() {
-        CommandRegistry.registerCommand(new Ping());
-        CommandRegistry.registerCommand(new Restart());
-        CommandRegistry.registerCommand(new Update());
-        CommandRegistry.registerCommand(new Upstart());
-        CommandRegistry.registerCommand(new CVote());
+import java.util.List;
+
+public class Upstart extends Command {
+    public Upstart () {
+        this.setNames(new String[]{"upstart"});
+        this.setDescription("Performs the update command and restarts the bot afterwards.");
+    }
+
+    @Override
+    public void execute(IMessage msg, List<String> args) {
+        // Fake command calls
+        GECkO.commandHandler.forceHandle(CommandHandler.getDefaultPrefix() + "update");
+        GECkO.commandHandler.forceHandle(CommandHandler.getDefaultPrefix() + "restart");
     }
 }

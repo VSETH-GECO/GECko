@@ -48,7 +48,7 @@ public class Vote {
         for (String answer : answers) {
             answerString += StringUtils.capitalize(answer) + ": React to set a reaction for this answer.\n";
         }
-        message = CommandUtils.respond(channel, "--- " + StringUtils.capitalize(question) + " ---\n\n" + answerString + "\n" + status);
+        message = CommandUtils.respond(channel, "--- " + StringUtils.capitalize(question) + " ---\n\n" + answerString + "\n");
 
         /**
          * TODO: Add temporary reactionAdd listener to check for added reactions

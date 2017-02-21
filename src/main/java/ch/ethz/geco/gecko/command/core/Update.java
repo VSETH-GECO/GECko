@@ -37,7 +37,8 @@ import java.util.List;
 public class Update extends Command {
     public Update() {
         this.setName("update");
-        this.setDescription("Fetches the latest changes and compiles them.");
+        this.setParams("[branch]");
+        this.setDescription("Fetches the latest changes and compiles them. It will try to update to the given branch or to master if no branch is given.");
     }
 
     private static final String REMOTE_URL = "https://github.com/VSETH-GECO/GECkO.git";
@@ -64,7 +65,12 @@ public class Update extends Command {
                     if (hasAtLeastOneReference(repo)) {
                         // Pull if valid
                         Git git = new Git(repo);
-                        git.pull();
+                        try {
+                            git.pull().call();
+                        } catch (GitAPIException e) {
+                            GECkO.logger.error("[Update] Could not pull changes from remote repository.");
+                            e.printStackTrace();
+                        }
                     } else {
                         // Reclone if invalid
                         try {
@@ -86,6 +92,20 @@ public class Update extends Command {
                     GECkO.logger.error("[Update] Could not clone remote repository.");
                     e.printStackTrace();
                 }
+            }
+
+            // Switch branch
+            try {
+                Repository repo = new FileRepositoryBuilder().setGitDir(repoDir).readEnvironment().findGitDir().build();
+                Git git = new Git(repo);
+                if (args.size() > 0) {
+                    git.checkout().setName(args.get(0));
+                } else {
+                    git.checkout().setName("master");
+                }
+            } catch (IOException e) {
+                GECkO.logger.error("[Update] Could not switch branch.");
+                e.printStackTrace();
             }
 
             // The local repo should be up-to-date now

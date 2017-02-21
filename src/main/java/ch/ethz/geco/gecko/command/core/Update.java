@@ -23,6 +23,7 @@ import ch.ethz.geco.gecko.GECkO;
 import ch.ethz.geco.gecko.command.Command;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.internal.storage.file.FileRepository;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryCache;
@@ -58,27 +59,17 @@ public class Update extends Command {
         }
 
         if (dirExists) {
-            if (RepositoryCache.FileKey.isGitRepository(repoDir, FS.DETECTED)) {
+            if (isValidLocalRepository(repoDir)) {
                 // Repo found, check if it's valid
                 try {
                     Repository repo = new FileRepositoryBuilder().setGitDir(repoDir).readEnvironment().findGitDir().build();
-                    if (hasAtLeastOneReference(repo)) {
-                        // Pull if valid
-                        Git git = new Git(repo);
-                        try {
-                            git.pull().call();
-                        } catch (GitAPIException e) {
-                            GECkO.logger.error("[Update] Could not pull changes from remote repository.");
-                            e.printStackTrace();
-                        }
-                    } else {
-                        // Reclone if invalid
-                        try {
-                            Git.cloneRepository().setURI(REMOTE_URL).setDirectory(repoDir).call();
-                        } catch (GitAPIException e) {
-                            GECkO.logger.error("[Update] Could not clone remote repository.");
-                            e.printStackTrace();
-                        }
+                    // Pull if valid
+                    Git git = new Git(repo);
+                    try {
+                        git.pull().call();
+                    } catch (GitAPIException e) {
+                        GECkO.logger.error("[Update] Could not pull changes from remote repository.");
+                        e.printStackTrace();
                     }
                 } catch (IOException e) {
                     GECkO.logger.error("[Update] Could not open local repository.");
@@ -109,10 +100,20 @@ public class Update extends Command {
             }
 
             // The local repo should be up-to-date now
-            // TODO: Build process
+            // TODO: Build process (use Maven Invoker)
         } else {
             GECkO.logger.error("[Update] Could not create new directory for local git repo.");
         }
+    }
+
+    private static boolean isValidLocalRepository(File repoDir) {
+        boolean result;
+        try {
+            result = new FileRepository(repoDir).getObjectDatabase().exists();
+        } catch (IOException e) {
+            result = false;
+        }
+        return result;
     }
 
     /**

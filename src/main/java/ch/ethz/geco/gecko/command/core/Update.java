@@ -21,8 +21,10 @@ package ch.ethz.geco.gecko.command.core;
 
 import ch.ethz.geco.gecko.GECkO;
 import ch.ethz.geco.gecko.command.Command;
+import ch.ethz.geco.gecko.command.CommandUtils;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.api.errors.RefNotFoundException;
 import org.eclipse.jgit.internal.storage.file.FileRepository;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -48,55 +50,65 @@ public class Update extends Command {
     @Override
     public void execute(IMessage msg, List<String> args) {
         // Check if directory exists
-        boolean dirExists = false;
         File repoDir = new File(LOCAL_PATH);
         if (!repoDir.isDirectory()) {
-            if (repoDir.mkdir()) {
-                dirExists = true;
-            }
-        } else {
-            dirExists = true;
+            repoDir.mkdir();
         }
 
-        if (dirExists) {
-            if (isValidLocalRepository(repoDir)) {
-                // Repo found, check if it's valid
+        if (repoDir.isDirectory()) {
+            // The local repository
+            Repository repo;
+
+            try {
+                repo = new FileRepositoryBuilder().setGitDir(new File(LOCAL_PATH + ".git/")).readEnvironment().findGitDir().build();
+            } catch (IOException e) {
+                GECkO.logger.error("[Update] Could not open local repository.");
+                e.printStackTrace();
+                return;
+            }
+
+            if (RepositoryCache.FileKey.isGitRepository(new File(LOCAL_PATH + ".git/"), FS.detect()) && hasAtLeastOneReference(repo)) {
+                // Valid repo found, pull
+                Git git = new Git(repo);
                 try {
-                    Repository repo = new FileRepositoryBuilder().setGitDir(repoDir).readEnvironment().findGitDir().build();
-                    // Pull if valid
-                    Git git = new Git(repo);
-                    try {
-                        git.pull().call();
-                    } catch (GitAPIException e) {
-                        GECkO.logger.error("[Update] Could not pull changes from remote repository.");
-                        e.printStackTrace();
-                    }
-                } catch (IOException e) {
-                    GECkO.logger.error("[Update] Could not open local repository.");
+                    git.pull().call();
+                } catch (GitAPIException e) {
+                    GECkO.logger.error("[Update] Could not pull changes from remote repository.");
                     e.printStackTrace();
+                    return;
                 }
             } else {
-                // Clone if non-existent
+                // Clone if non-existent or invalid
                 try {
                     Git.cloneRepository().setURI(REMOTE_URL).setDirectory(repoDir).call();
                 } catch (GitAPIException e) {
                     GECkO.logger.error("[Update] Could not clone remote repository.");
                     e.printStackTrace();
+                    return;
                 }
             }
 
             // Switch branch
+            Git git = new Git(repo);
+            String targetBranch;
+            if (args.size() > 0) {
+                targetBranch = args.get(0);
+            } else {
+                targetBranch = "master";
+            }
+
             try {
-                Repository repo = new FileRepositoryBuilder().setGitDir(repoDir).readEnvironment().findGitDir().build();
-                Git git = new Git(repo);
-                if (args.size() > 0) {
-                    git.checkout().setName(args.get(0));
+                git.checkout().setName(targetBranch).call();
+            } catch (GitAPIException e) {
+                // If it was an invalid reference
+                if (e instanceof RefNotFoundException) {
+                    CommandUtils.respond(msg, "There is no branch called \"" + targetBranch + "\".");
                 } else {
-                    git.checkout().setName("master");
+                    e.printStackTrace();
                 }
-            } catch (IOException e) {
-                GECkO.logger.error("[Update] Could not switch branch.");
-                e.printStackTrace();
+
+                GECkO.logger.error("[Update] Could not switch branches.");
+                return;
             }
 
             // The local repo should be up-to-date now
@@ -104,16 +116,6 @@ public class Update extends Command {
         } else {
             GECkO.logger.error("[Update] Could not create new directory for local git repo.");
         }
-    }
-
-    private static boolean isValidLocalRepository(File repoDir) {
-        boolean result;
-        try {
-            result = new FileRepository(repoDir).getObjectDatabase().exists();
-        } catch (IOException e) {
-            result = false;
-        }
-        return result;
     }
 
     /**

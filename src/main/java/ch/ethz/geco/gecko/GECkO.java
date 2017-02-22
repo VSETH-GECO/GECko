@@ -21,6 +21,7 @@ package ch.ethz.geco.gecko;
 
 import ch.ethz.geco.gecko.command.CommandBank;
 import ch.ethz.geco.gecko.command.CommandHandler;
+import ch.ethz.geco.gecko.command.CommandUtils;
 import org.slf4j.LoggerFactory;
 import sx.blah.discord.api.ClientBuilder;
 import sx.blah.discord.api.IDiscordClient;
@@ -109,6 +110,8 @@ public class GECkO {
         // Start to listen to commands after initializing everything else
         EventDispatcher dispatcher = discordClient.getDispatcher();
         dispatcher.registerListener(new CommandHandler());
+
+        CommandUtils.respond(mainChannel, "**Initialized!**");
     }
 
     /**

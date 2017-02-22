@@ -82,7 +82,7 @@ public class Update extends Command {
                     repo = new FileRepositoryBuilder().setGitDir(new File(LOCAL_PATH + ".git/")).readEnvironment().findGitDir().build();
                 } catch (IOException e) {
                     updateMessage(updateMessage, "Could not open local repository", "-", "\n\nUpdate canceled.");
-                    GECkO.logger.error("[Update] Could not open local repository.");
+                    GECkO.logger.error("[UPDATE] Could not open local repository.");
                     e.printStackTrace();
                     return;
                 }
@@ -94,7 +94,7 @@ public class Update extends Command {
                         git.pull().call();
                     } catch (GitAPIException e) {
                         updateMessage(updateMessage, "Could not pull changes from remote repository", "-", "\n\nUpdate canceled.");
-                        GECkO.logger.error("[Update] Could not pull changes from remote repository.");
+                        GECkO.logger.error("[UPDATE] Could not pull changes from remote repository.");
                         e.printStackTrace();
                         return;
                     }
@@ -104,7 +104,7 @@ public class Update extends Command {
                         Git.cloneRepository().setURI(REMOTE_URL).setDirectory(repoDir).call();
                     } catch (GitAPIException e) {
                         updateMessage(updateMessage, "Could not clone remote repository", "-", "\n\nUpdate canceled.");
-                        GECkO.logger.error("[Update] Could not clone remote repository.");
+                        GECkO.logger.error("[UPDATE] Could not clone remote repository.");
                         e.printStackTrace();
                         return;
                     }
@@ -131,7 +131,7 @@ public class Update extends Command {
                         e.printStackTrace();
                     }
 
-                    GECkO.logger.error("[Update] Could not switch branches.");
+                    GECkO.logger.error("[UPDATE] Could not switch branches.");
                     return;
                 }
 
@@ -148,14 +148,14 @@ public class Update extends Command {
                 try {
                     result = invoker.execute(request);
                 } catch (MavenInvocationException e) {
-                    GECkO.logger.error("[Update] An error occurred while trying to build maven.");
+                    GECkO.logger.error("[UPDATE] An error occurred while trying to build maven.");
                     e.printStackTrace();
                 }
 
                 if (result != null && result.getExitCode() == 0) {
-                    GECkO.logger.info("[Update] Maven build successful!");
+                    GECkO.logger.info("[UPDATE] Maven build successful!");
                 } else {
-                    GECkO.logger.error("[Update] Maven build failed!");
+                    GECkO.logger.error("[UPDATE] Maven build failed!");
                     if (result == null) {
                         updateMessage(updateMessage, gitStatus, "An internal maven error occurred", updateStatus);
                     } else {
@@ -164,7 +164,7 @@ public class Update extends Command {
                 }
 
                 File backupDir = new File(BACKUP_PATH);
-                File oldBackup = new File(backupDir + "GECkO.jar");
+                File oldBackup = new File(BACKUP_PATH + "GECkO.jar");
                 File oldBin = new File("GECkO.jar");
                 File newBin = new File("target/GECkO-dev-SNAPSHOT-shaded.jar");
                 try {
@@ -176,9 +176,11 @@ public class Update extends Command {
 
                     try {
                         FileUtils.moveFile(newBin, oldBin);
+                        updateStatus = "\n\nUpdate successful, restart to apply.";
                     } catch (IOException e) {
                         // Restore backup on error
                         FileUtils.moveFile(oldBackup, oldBin);
+                        updateStatus = "\n\nCould not replace old binary with new one, restoring backup.";
                     }
                 } catch (IOException e) {
                     updateStatus = "\n\nAn error occurred while moving the binaries.";
@@ -189,7 +191,7 @@ public class Update extends Command {
                 updateMessage(updateMessage, gitStatus, "Success!", updateStatus);
             } else {
                 updateMessage(updateMessage, "Could not create new dir for local git repository", "-", "\n\nUpdate canceled.");
-                GECkO.logger.error("[Update] Could not create new directory for local git repo.");
+                GECkO.logger.error("[UPDATE] Could not create new directory for local git repo.");
             }
 
             buildLock = false;

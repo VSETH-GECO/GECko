@@ -27,6 +27,7 @@ import sx.blah.discord.handle.obj.IVoiceChannel;
 import sx.blah.discord.util.DiscordException;
 import sx.blah.discord.util.RequestBuffer;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 
@@ -42,13 +43,19 @@ public class Restart extends Command {
         List<IVoiceChannel> connectedVoiceChannels = GECkO.discordClient.getConnectedVoiceChannels();
         GECkO.logger.debug("[RESTART] Leaving all connected voice channels...");
         connectedVoiceChannels.stream().filter(voiceChannel -> Objects.equals(voiceChannel.getGuild().getID(), msg.getGuild().getID())).forEach(IVoiceChannel::leave);
-        CommandUtils.respond(msg, "[INFO] Restarting bot...");
+        CommandUtils.respond(msg, "**Restarting bot...**");
         CommandUtils.deleteMessage(msg);
 
         GECkO.logger.debug("[RESTART] Trying to shutdown bot:");
         RequestBuffer.request(() -> { try {
             GECkO.logger.debug("[RESTART] - Logging out...");
             GECkO.discordClient.logout();
+            GECkO.logger.debug("[RESTART] - Starting new process of the bot...");
+            try {
+                Runtime.getRuntime().exec("java -jar GECkO.jar");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             GECkO.logger.debug("[RESTART] - calling System.exit(0)...");
             new Thread(() -> System.exit(0)).start();
         } catch (DiscordException e) {

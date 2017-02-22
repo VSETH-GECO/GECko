@@ -2,5 +2,7 @@
 target/
 *.iml
 *.properties
+*.jar
 build/
 bin/
+backup/

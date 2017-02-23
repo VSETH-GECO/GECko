@@ -38,7 +38,7 @@
                             <goal>copy-dependencies</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>${project.build.directory}/../lib</outputDirectory>
+                            <outputDirectory>${project.build.directory}/../../lib</outputDirectory>
                         </configuration>
                     </execution>
 
@@ -56,13 +56,10 @@
                                     <version>dev-SNAPSHOT</version>
                                     <type>jar</type>
                                     <overWrite>true</overWrite>
-                                    <outputDirectory>${project.build.directory}/../</outputDirectory>
+                                    <outputDirectory>${project.build.directory}/../../</outputDirectory>
                                     <destFileName>GECkO.jar</destFileName>
                                 </artifactItem>
                             </artifactItems>
-                            <outputDirectory>${project.build.directory}/../</outputDirectory>
-                            <overWriteReleases>true</overWriteReleases>
-                            <overWriteSnapshots>true</overWriteSnapshots>
                         </configuration>
                     </execution>
                 </executions>

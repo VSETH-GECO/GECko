@@ -54,7 +54,7 @@ public class Whois extends Command {
                     message = "An internal error occurred.";
                 }
             } catch (NoSuchElementException e) {
-                message = "There is no account linked to **" + user.getName() + user.getDiscriminator() + "**";
+                message = "There is no account linked to **" + user.getName() + "#" + user.getDiscriminator() + "**";
             }
 
             CommandUtils.respond(msg, message);

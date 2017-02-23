@@ -147,20 +147,23 @@ public class Update extends Command {
 
                 // The local repo should be up-to-date now, trying to build
                 InvocationRequest request = new DefaultInvocationRequest();
-                request.setPomFile(new File("pom.xml"));
+                request.setPomFile(new File("build/pom.xml"));
                 request.setGoals(Collections.singletonList("package"));
 
                 Invoker invoker = new DefaultInvoker().setMavenHome(new File(BIN_PATH + "maven/"));
-                InvocationResult result = null;
+                InvocationResult result;
                 try {
                     result = invoker.execute(request);
                 } catch (MavenInvocationException e) {
                     GECkO.logger.error("[UPDATE] An error occurred while trying to build maven.");
                     e.printStackTrace();
+                    buildLock = false;
+                    return;
                 }
 
                 if (result != null && result.getExitCode() == 0) {
                     GECkO.logger.info("[UPDATE] Maven build successful!");
+                    mavenStatus = "Success!";
                 } else {
                     GECkO.logger.error("[UPDATE] Maven build failed!");
                     if (result == null) {
@@ -168,12 +171,14 @@ public class Update extends Command {
                     } else {
                         updateMessage(updateMessage, gitStatus, "Build failed with error code: " + result.getExitCode(), updateStatus);
                     }
+                    buildLock = false;
+                    return;
                 }
 
                 File backupDir = new File(BACKUP_PATH);
                 File oldBackup = new File(BACKUP_PATH + "GECkO.jar");
                 File oldBin = new File("GECkO.jar");
-                File newBin = new File("target/GECkO-dev-SNAPSHOT-shaded.jar");
+                File newBin = new File("build/target/GECkO-dev-SNAPSHOT.jar");
                 try {
                     if (oldBackup.isFile()) {
                         oldBackup.delete();
@@ -195,7 +200,7 @@ public class Update extends Command {
                     e.printStackTrace();
                 }
 
-                updateMessage(updateMessage, gitStatus, "Success!", updateStatus);
+                updateMessage(updateMessage, gitStatus, mavenStatus, updateStatus);
             } else {
                 updateMessage(updateMessage, "Could not create new dir for local git repository", "-", "\n\nUpdate canceled.");
                 GECkO.logger.error("[UPDATE] Could not create new directory for local git repo.");

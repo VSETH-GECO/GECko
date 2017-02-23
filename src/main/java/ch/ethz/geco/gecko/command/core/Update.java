@@ -87,6 +87,7 @@ public class Update extends Command {
                     updateMessage(updateMessage, "Could not open local repository", "-", "\n\nUpdate canceled.");
                     GECkO.logger.error("[UPDATE] Could not open local repository.");
                     e.printStackTrace();
+                    buildLock = false;
                     return;
                 }
 
@@ -99,6 +100,7 @@ public class Update extends Command {
                         updateMessage(updateMessage, "Could not pull changes from remote repository", "-", "\n\nUpdate canceled.");
                         GECkO.logger.error("[UPDATE] Could not pull changes from remote repository.");
                         e.printStackTrace();
+                        buildLock = false;
                         return;
                     }
                 } else {
@@ -109,6 +111,7 @@ public class Update extends Command {
                         updateMessage(updateMessage, "Could not clone remote repository", "-", "\n\nUpdate canceled.");
                         GECkO.logger.error("[UPDATE] Could not clone remote repository.");
                         e.printStackTrace();
+                        buildLock = false;
                         return;
                     }
                 }
@@ -135,6 +138,7 @@ public class Update extends Command {
                     }
 
                     GECkO.logger.error("[UPDATE] Could not switch branches.");
+                    buildLock = false;
                     return;
                 }
 

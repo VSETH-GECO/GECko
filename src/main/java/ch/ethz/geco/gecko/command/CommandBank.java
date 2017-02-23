@@ -20,6 +20,7 @@
 package ch.ethz.geco.gecko.command;
 
 import ch.ethz.geco.gecko.command.core.*;
+import ch.ethz.geco.gecko.command.misc.Whois;
 import ch.ethz.geco.gecko.command.vote.CVote;
 
 /**
@@ -30,10 +31,15 @@ public class CommandBank {
      * Registers all commands in the CommandRegistry
      */
     public static void registerCommands() {
+        // Core
         CommandRegistry.registerCommand(new Ping());
         CommandRegistry.registerCommand(new Restart());
         CommandRegistry.registerCommand(new Update());
         CommandRegistry.registerCommand(new Upstart());
+
+        //
+        CommandRegistry.registerCommand(new Whois());
+
         CommandRegistry.registerCommand(new CVote());
     }
 }

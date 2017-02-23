@@ -148,7 +148,7 @@ public class Update extends Command {
                 // The local repo should be up-to-date now, trying to build
                 InvocationRequest request = new DefaultInvocationRequest();
                 request.setPomFile(new File("build/pom.xml"));
-                request.setGoals(Collections.singletonList("package"));
+                request.setGoals(Collections.singletonList("install"));
 
                 Invoker invoker = new DefaultInvoker().setMavenHome(new File(BIN_PATH + "maven/"));
                 InvocationResult result;
@@ -163,7 +163,7 @@ public class Update extends Command {
 
                 if (result != null && result.getExitCode() == 0) {
                     GECkO.logger.info("[UPDATE] Maven build successful!");
-                    mavenStatus = "Success!";
+                    updateMessage(updateMessage, gitStatus, "Success!", "\n\nRestart the bot to apply update.");
                 } else {
                     GECkO.logger.error("[UPDATE] Maven build failed!");
                     if (result == null) {
@@ -174,33 +174,6 @@ public class Update extends Command {
                     buildLock = false;
                     return;
                 }
-
-                File backupDir = new File(BACKUP_PATH);
-                File oldBackup = new File(BACKUP_PATH + "GECkO.jar");
-                File oldBin = new File("GECkO.jar");
-                File newBin = new File("build/target/GECkO-dev-SNAPSHOT.jar");
-                try {
-                    if (oldBackup.isFile()) {
-                        oldBackup.delete();
-                    }
-
-                    FileUtils.moveFileToDirectory(oldBin, backupDir, true);
-
-                    try {
-                        FileUtils.moveFile(newBin, oldBin);
-                        updateStatus = "\n\nUpdate successful, restart to apply.";
-                    } catch (IOException e) {
-                        // Restore backup on error
-                        FileUtils.moveFile(oldBackup, oldBin);
-                        updateStatus = "\n\nCould not replace old binary with new one, restoring backup.";
-                    }
-                } catch (IOException e) {
-                    updateStatus = "\n\nAn error occurred while moving the binaries.";
-                    GECkO.logger.error("[UPDATE] An error occurred while moving file.");
-                    e.printStackTrace();
-                }
-
-                updateMessage(updateMessage, gitStatus, mavenStatus, updateStatus);
             } else {
                 updateMessage(updateMessage, "Could not create new dir for local git repository", "-", "\n\nUpdate canceled.");
                 GECkO.logger.error("[UPDATE] Could not create new directory for local git repo.");

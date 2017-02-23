@@ -33,7 +33,6 @@ public class Whois extends Command {
         this.setName("whois");
         this.setParams("<@User>");
         this.setDescription("Returns information about the given user.");
-        this.setRemoveAfterCall(true);
     }
 
     @Override
@@ -55,7 +54,7 @@ public class Whois extends Command {
                     message = "An internal error occurred.";
                 }
             } catch (NoSuchElementException e) {
-                message = "There is no account linked to this Discord user.";
+                message = "There is no account linked to **" + user.getName() + user.getDiscriminator() + "**";
             }
 
             CommandUtils.respond(msg, message);

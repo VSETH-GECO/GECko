@@ -50,12 +50,6 @@ public class Restart extends Command {
         RequestBuffer.request(() -> { try {
             GECkO.logger.debug("[RESTART] - Logging out...");
             GECkO.discordClient.logout();
-            GECkO.logger.debug("[RESTART] - Starting new process of the bot...");
-            try {
-                Runtime.getRuntime().exec("java -jar GECkO.jar");
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
             GECkO.logger.debug("[RESTART] - calling System.exit(0)...");
             new Thread(() -> System.exit(0)).start();
         } catch (DiscordException e) {

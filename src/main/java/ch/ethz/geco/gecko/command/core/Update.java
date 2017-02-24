@@ -226,7 +226,7 @@ public class Update extends Command {
      * @return the updated message
      */
     private static IMessage updateMessage(IMessage msg, String gitStatus, String mavenStatus, String updateStatus) {
-        return CommandUtils.editMessage(msg, "**Update Status:**\n- Git Status: " + gitStatus + "\n- Mvn Status: " + mavenStatus + updateStatus);
+        return CommandUtils.editMessage(msg, "**Update Status:**\n- Git Status: " + gitStatus + "\n- Mvn Status: " + mavenStatus + "\n\n" + updateStatus);
     }
 
     /**

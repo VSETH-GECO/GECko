@@ -22,7 +22,8 @@ package ch.ethz.geco.gecko.command.core;
 import ch.ethz.geco.gecko.GECkO;
 import ch.ethz.geco.gecko.command.Command;
 import ch.ethz.geco.gecko.command.CommandUtils;
-import org.apache.commons.io.FileUtils;
+import ch.ethz.geco.gecko.rest.api.PastebinAPI;
+import ch.ethz.geco.gecko.rest.api.exception.APIException;
 import org.apache.maven.shared.invoker.*;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -36,6 +37,7 @@ import sx.blah.discord.handle.obj.IMessage;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.util.Collections;
 import java.util.List;
 
@@ -149,6 +151,11 @@ public class Update extends Command {
                 request.setPomFile(new File("build/pom.xml"));
                 request.setGoals(Collections.singletonList("install"));
 
+                StringWriter writer = new StringWriter();
+                InvocationOutputHandler outputHandler = s -> writer.write(s + "\n");
+                request.setErrorHandler(outputHandler);
+                request.setOutputHandler(outputHandler);
+
                 Invoker invoker = new DefaultInvoker().setMavenHome(new File(BIN_PATH + "maven/"));
                 InvocationResult result;
                 try {
@@ -172,6 +179,22 @@ public class Update extends Command {
                     }
                     buildLock = false;
                     return;
+                }
+
+                // Post build log on pastebin
+                String pastebinLink;
+                try {
+                    pastebinLink = PastebinAPI.createPaste("Build log", writer.toString(), "10M", true);
+
+                    if (pastebinLink != null) {
+                        updateMessage(updateMessage, gitStatus, mavenStatus, "Build log: " + pastebinLink);
+                    } else {
+                        // Connection error, writing to stdout
+                        System.out.println(writer.toString());
+                    }
+                } catch (APIException e) {
+                    GECkO.logger.error("[Update] A Pastebin API error occurred, writing output to stdout.");
+                    System.out.println(writer.toString());
                 }
             } else {
                 updateMessage(updateMessage, "Could not create new dir for local git repository", "-", "\n\nUpdate canceled.");

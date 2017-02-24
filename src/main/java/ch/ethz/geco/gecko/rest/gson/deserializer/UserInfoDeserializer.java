@@ -19,16 +19,16 @@
 
 package ch.ethz.geco.gecko.rest.gson.deserializer;
 
-import ch.ethz.geco.gecko.rest.GECOAPI;
+import ch.ethz.geco.gecko.rest.api.GecoAPI;
 import com.google.gson.*;
 
 import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Map;
 
-public class UserInfoDeserializer implements JsonDeserializer<GECOAPI.UserInfo> {
+public class UserInfoDeserializer implements JsonDeserializer<GecoAPI.UserInfo> {
     @Override
-    public GECOAPI.UserInfo deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
+    public GecoAPI.UserInfo deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
         JsonObject jsonUserInfo = (JsonObject) jsonElement;
 
         // Parse accounts
@@ -39,6 +39,6 @@ public class UserInfoDeserializer implements JsonDeserializer<GECOAPI.UserInfo> 
             accounts.put(jsonAccountObject.get("type").getAsString(), jsonAccountObject.get("id").getAsString());
         }
 
-        return new GECOAPI.UserInfo(jsonUserInfo.get("id").getAsInt(), jsonUserInfo.get("name").getAsString(), jsonUserInfo.get("posts").getAsInt(), jsonUserInfo.get("threads").getAsInt(), accounts);
+        return new GecoAPI.UserInfo(jsonUserInfo.get("id").getAsInt(), jsonUserInfo.get("name").getAsString(), jsonUserInfo.get("posts").getAsInt(), jsonUserInfo.get("threads").getAsInt(), accounts);
     }
 }

@@ -19,23 +19,23 @@
 
 package ch.ethz.geco.gecko.rest.gson.deserializer;
 
-import ch.ethz.geco.gecko.rest.GECOAPI;
+import ch.ethz.geco.gecko.rest.api.GecoAPI;
 import com.google.gson.*;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
-public class LanUserDeserializer implements JsonDeserializer<List<GECOAPI.LanUser>> {
+public class LanUserDeserializer implements JsonDeserializer<List<GecoAPI.LanUser>> {
     @Override
-    public List<GECOAPI.LanUser> deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
+    public List<GecoAPI.LanUser> deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
         JsonArray jsonLanUsers = json.getAsJsonArray();
 
         // TODO: maybe save it in a map with key = id or lanid for faster and easier lookup
-        List<GECOAPI.LanUser> lanUsers = new ArrayList<>();
+        List<GecoAPI.LanUser> lanUsers = new ArrayList<>();
         for (JsonElement jsonLanUser : jsonLanUsers) {
             JsonObject jsonLanUserObject = jsonLanUser.getAsJsonObject();
-            lanUsers.add(new GECOAPI.LanUser(jsonLanUserObject.get("id").getAsInt(), jsonLanUserObject.get("lan_user2017_id").getAsInt(), jsonLanUserObject.get("status").getAsInt(), jsonLanUserObject.get("username").getAsString()));
+            lanUsers.add(new GecoAPI.LanUser(jsonLanUserObject.get("id").getAsInt(), jsonLanUserObject.get("lan_user2017_id").getAsInt(), jsonLanUserObject.get("status").getAsInt(), jsonLanUserObject.get("username").getAsString()));
         }
 
         return lanUsers;

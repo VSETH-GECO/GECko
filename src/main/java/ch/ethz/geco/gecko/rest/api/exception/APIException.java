@@ -14,32 +14,22 @@
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  *
- * For more information, please refer to <http://unlicense.org/>
+ * For more information, please refer to <http://unlicense.org>
  */
 
-package ch.ethz.geco.gecko.rest.gson;
+package ch.ethz.geco.gecko.rest.api.exception;
 
-import ch.ethz.geco.gecko.rest.api.GecoAPI;
-import ch.ethz.geco.gecko.rest.gson.deserializer.UserInfoDeserializer;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+/**
+ * Small wrapper to be able to throw API based errors
+ */
+public class APIException extends Exception {
+    private String message;
 
-public class GsonManager {
-    private static boolean wasInitialized = false;
-    private static Gson gson;
-
-    private static void init() {
-        GsonBuilder gsonBuilder = new GsonBuilder();
-        gsonBuilder.registerTypeAdapter(GecoAPI.UserInfo.class, new UserInfoDeserializer());
-        gson = gsonBuilder.create();
-    }
-
-    public static Gson getGson() {
-        if (wasInitialized) {
-            return gson;
-        } else {
-            init();
-            return gson;
-        }
+    /**
+     * @param message The error message
+     */
+    public APIException(String message) {
+        super(message);
+        this.message = message;
     }
 }

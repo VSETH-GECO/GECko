@@ -17,72 +17,39 @@
  * For more information, please refer to <http://unlicense.org>
  */
 
-package ch.ethz.geco.gecko.rest;
+package ch.ethz.geco.gecko.rest.api;
 
+import ch.ethz.geco.gecko.ConfigManager;
 import ch.ethz.geco.gecko.GECkO;
+import ch.ethz.geco.gecko.rest.RequestWrapper;
 import ch.ethz.geco.gecko.rest.gson.GsonManager;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.ssl.SSLContextBuilder;
 
 import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.util.List;
-import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.*;
 
-
-public class GECOAPI {
+public class GecoAPI {
     private static final String API_URL = "https://5.230.148.221/api/v1/";
-    private static final String API_KEY = "21HfZ1fPMI1OkqQP7buMsgtt";
-
-    // Shitty workaround to bypass errors with self signed certificates
-    private static HttpClient createSSLIgnore() {
-        SSLContextBuilder sshbuilder = new SSLContextBuilder();
-        try {
-            sshbuilder.loadTrustMaterial(null, new TrustSelfSignedStrategy());
-        } catch (NoSuchAlgorithmException | KeyStoreException e) {
-            e.printStackTrace();
-        }
-        SSLConnectionSocketFactory sslsf = null;
-        try {
-            sslsf = new SSLConnectionSocketFactory(sshbuilder.build());
-        } catch (NoSuchAlgorithmException | KeyManagementException e) {
-            e.printStackTrace();
-        }
-
-        return HttpClients.custom()
-                .setSSLSocketFactory(sslsf)
-                .build();
-    }
 
     /**
      * Tries to get the website user info of the user with the given discord user ID via the API.
      *
      * @param discordID the discord user ID we want to query
-     * @return the user info of the website user with the given discord ID
-     * @throws NoSuchFieldException if there is no user linked to the given discord ID
+     * @return the user info of the website user with the given discord ID, null otherwise
+     * @throws NoSuchElementException if there is no user linked to the given discord ID
      */
     public static UserInfo getUserInfoByDiscordID(String discordID) throws NoSuchElementException {
-        // FIXME: fix certificate error
-        HttpClient httpClient = createSSLIgnore();
-        HttpGet httpGet = new HttpGet(API_URL + "user/discord/" + discordID);
-        httpGet.setHeader("Authorization", "Token token=" + API_KEY);
-
+        // Set headers
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Authorization", "Token token=" + ConfigManager.getProperties().getProperty("gecoAPIKey"));
         try {
-            HttpResponse response = httpClient.execute(httpGet);
+            HttpResponse response = RequestWrapper.getRequest(API_URL + "user/discord/" + discordID, headers, true);
             StatusLine statusLine = response.getStatusLine();
             switch (statusLine.getStatusCode()) {
                 case 200:
@@ -98,11 +65,11 @@ public class GECOAPI {
                     throw new NoSuchElementException();
                 default:
                     // Other API errors
-                    GECkO.logger.error("[GECOAPI] An API error occurred: " + statusLine.getStatusCode() + " " + statusLine.getReasonPhrase());
+                    GECkO.logger.error("[GecoAPI] An API error occurred: " + statusLine.getStatusCode() + " " + statusLine.getReasonPhrase());
                     break;
             }
         } catch (IOException e) {
-            GECkO.logger.error("[GECOAPI] Failed to connect to API.");
+            GECkO.logger.error("[GecoAPI] A Connection error occurred: ");
             e.printStackTrace();
         }
 
@@ -148,13 +115,14 @@ public class GECOAPI {
         }
     }
 
+    /**
+     * Tries to get the lan user information.
+     *
+     * @return a list of lan users if successful, null otherwise
+     */
     public static List<LanUser> getLanUsers() {
-        // FIXME: fix certificate error
-        HttpClient httpClient = createSSLIgnore();
-        HttpGet httpGet = new HttpGet(API_URL + "lan/seats/");
-
         try {
-            HttpResponse response = httpClient.execute(httpGet);
+            HttpResponse response = RequestWrapper.getRequest(API_URL + "lan/seats/", Collections.emptyMap(), true);
             StatusLine statusLine = response.getStatusLine();
             switch (statusLine.getStatusCode()) {
                 case 200:
@@ -164,14 +132,15 @@ public class GECOAPI {
                     IOUtils.copy(entity.getContent(), writer, StandardCharsets.UTF_8);
                     String json = writer.toString();
 
-                    return GsonManager.getGson().fromJson(json, new TypeToken<List<GECOAPI.LanUser>>(){}.getType());
+                    return GsonManager.getGson().fromJson(json, new TypeToken<List<GecoAPI.LanUser>>() {
+                    }.getType());
                 default:
                     // Other API errors
-                    GECkO.logger.error("[GECOAPI] An API error occurred: " + statusLine.getStatusCode() + " " + statusLine.getReasonPhrase());
+                    GECkO.logger.error("[GecoAPI] An API error occurred: " + statusLine.getStatusCode() + " " + statusLine.getReasonPhrase());
                     break;
             }
         } catch (IOException e) {
-            GECkO.logger.error("[GECOAPI] Failed to connect to API.");
+            GECkO.logger.error("[GecoAPI] A Connection error occurred: ");
             e.printStackTrace();
         }
 

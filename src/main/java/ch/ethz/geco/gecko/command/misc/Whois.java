@@ -21,7 +21,7 @@ package ch.ethz.geco.gecko.command.misc;
 
 import ch.ethz.geco.gecko.command.Command;
 import ch.ethz.geco.gecko.command.CommandUtils;
-import ch.ethz.geco.gecko.rest.GECOAPI;
+import ch.ethz.geco.gecko.rest.api.GecoAPI;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
 
@@ -41,7 +41,7 @@ public class Whois extends Command {
             IUser user = msg.getMentions().get(0);
             String message;
             try {
-                GECOAPI.UserInfo userInfo = GECOAPI.getUserInfoByDiscordID(user.getID());
+                GecoAPI.UserInfo userInfo = GecoAPI.getUserInfoByDiscordID(user.getID());
                 if (userInfo != null) {
                     message = "**__User: " + user.getName() + "#" + user.getDiscriminator() + "__**\n**GECO:** https://geco.ethz.ch/users/" + userInfo.getUserID();
                     if (userInfo.getAccounts().containsKey("steam")) {

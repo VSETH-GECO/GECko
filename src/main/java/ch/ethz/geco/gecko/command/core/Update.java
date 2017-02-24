@@ -52,7 +52,6 @@ public class Update extends Command {
      */
     private static final String REMOTE_URL = "https://github.com/VSETH-GECO/GECkO.git";
     private static final String LOCAL_PATH = "build/";
-    private static final String BACKUP_PATH = "backup/";
     private static final String BIN_PATH = "bin/";
 
     /**

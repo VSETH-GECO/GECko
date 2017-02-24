@@ -21,6 +21,7 @@ package ch.ethz.geco.gecko.rest;
 
 import ch.ethz.geco.gecko.GECkO;
 import ch.ethz.geco.gecko.rest.gson.GsonManager;
+import com.google.gson.reflect.TypeToken;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -38,6 +39,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
@@ -75,7 +78,6 @@ public class GECOAPI {
      */
     public static UserInfo getUserInfoByDiscordID(String discordID) throws NoSuchElementException {
         // FIXME: fix certificate error
-        //System.getProperties().setProperty("com.sun.net.ssl.checkRevocation", "false");
         HttpClient httpClient = createSSLIgnore();
         HttpGet httpGet = new HttpGet(API_URL + "user/discord/" + discordID);
         httpGet.setHeader("Authorization", "Token token=" + API_KEY);
@@ -144,6 +146,69 @@ public class GECOAPI {
 
         public Map<String, String> getAccounts() {
             return accounts;
+        }
+    }
+
+    public static List<LanUser> getLanUsers() {
+        // FIXME: fix certificate error
+        HttpClient httpClient = createSSLIgnore();
+        HttpGet httpGet = new HttpGet(API_URL + "lan/seats/");
+
+        try {
+            HttpResponse response = httpClient.execute(httpGet);
+            StatusLine statusLine = response.getStatusLine();
+            switch (statusLine.getStatusCode()) {
+                case 200:
+                    // Success
+                    HttpEntity entity = response.getEntity();
+                    StringWriter writer = new StringWriter();
+                    IOUtils.copy(entity.getContent(), writer, StandardCharsets.UTF_8);
+                    String json = writer.toString();
+
+                    return GsonManager.getGson().fromJson(json, new TypeToken<List<GECOAPI.LanUser>>(){}.getType());
+                default:
+                    // Other API errors
+                    GECkO.logger.error("[GECOAPI] An API error occurred: " + statusLine.getStatusCode() + " " + statusLine.getReasonPhrase());
+                    break;
+            }
+        } catch (IOException e) {
+            GECkO.logger.error("[GECOAPI] Failed to connect to API.");
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    /**
+     * A subclass representing a lan user on the website
+     */
+    public static class LanUser {
+        int userID;
+        int lanUserID;
+        int status;
+        String userName;
+
+        public LanUser(int userID, int lanUserID, int status, String userName) {
+            this.userID = userID;
+            this.lanUserID = lanUserID;
+            this.status = status;
+            this.userName = userName;
+        }
+
+        public int getUserID() {
+            return userID;
+        }
+
+        public int getLanUserID() {
+            return lanUserID;
+        }
+
+        public int getStatus() {
+            return status;
+        }
+
+        public String getUserName() {
+            return userName;
         }
     }
 }

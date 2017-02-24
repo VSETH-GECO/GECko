@@ -28,7 +28,7 @@ import java.util.List;
  * This class represents a basic command structure
  */
 public abstract class Command {
-    /*
+    /**
      * Basic information
      */
     private String[] names;
@@ -77,7 +77,7 @@ public abstract class Command {
         return permissions;
     }
 
-    /*
+    /**
      * Flags with default values
      */
     private boolean isMentionCommand = false;

@@ -39,7 +39,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -183,20 +182,20 @@ public class GECOAPI {
      * A subclass representing a lan user on the website
      */
     public static class LanUser {
-        int userID;
+        int seatNumber;
         int lanUserID;
         int status;
         String userName;
 
-        public LanUser(int userID, int lanUserID, int status, String userName) {
-            this.userID = userID;
+        public LanUser(int seatNumber, int lanUserID, int status, String userName) {
+            this.seatNumber = seatNumber;
             this.lanUserID = lanUserID;
             this.status = status;
             this.userName = userName;
         }
 
-        public int getUserID() {
-            return userID;
+        public int getSeatNumber() {
+            return seatNumber;
         }
 
         public int getLanUserID() {

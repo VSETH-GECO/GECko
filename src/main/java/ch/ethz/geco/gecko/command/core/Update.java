@@ -27,12 +27,14 @@ import ch.ethz.geco.gecko.rest.api.exception.APIException;
 import org.apache.maven.shared.invoker.*;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.api.errors.RefNotFoundException;
+import org.eclipse.jgit.api.errors.TransportException;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryCache;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.util.FS;
+import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IMessage;
 
 import java.io.File;
@@ -50,27 +52,34 @@ public class Update extends Command {
     }
 
     /**
-     * Set some default paths
+     * URL of the remote git repository
      */
     private static final String REMOTE_URL = "https://github.com/VSETH-GECO/GECkO.git";
+    /**
+     * Path to the local git repository
+     */
     private static final String LOCAL_PATH = "build/";
+    /**
+     * Path to the binary folder containing needed binaries like maven
+     */
     private static final String BIN_PATH = "bin/";
 
     /**
-     * True if there is currently another build running
+     * The update message
      */
-    private static volatile boolean buildLock = false;
+    private static volatile IMessage statusMessage;
+    private static String gitStatus;
+    private static String mavenStatus;
+    private static String updateStatus;
 
     @Override
     public void execute(IMessage msg, List<String> args) {
         // Don't update if there is already another update running
-        if (!buildLock) {
-            buildLock = true;
-
-            String gitStatus = "Pulling and Updating...";
-            String mavenStatus = "Waiting...";
-            String updateStatus = "";
-            IMessage updateMessage = CommandUtils.respond(msg, "**Update Status:**\n- Git Status: " + gitStatus + "\n- Mvn Status:" + mavenStatus + "\n\n" + updateStatus);
+        if (statusMessage == null) {
+            gitStatus = "Pulling and Updating...";
+            mavenStatus = "Waiting...";
+            updateStatus = "";
+            flushStatusMessage(msg.getChannel());
 
             // Check if directory exists
             File repoDir = new File(LOCAL_PATH);
@@ -82,43 +91,7 @@ public class Update extends Command {
                 // The local repository
                 Repository repo;
 
-                try {
-                    repo = new FileRepositoryBuilder().setGitDir(new File(LOCAL_PATH + ".git/")).readEnvironment().findGitDir().build();
-                } catch (IOException e) {
-                    updateMessage(updateMessage, "Could not open local repository", "-", "Update canceled.");
-                    GECkO.logger.error("[Update] Could not open local repository.");
-                    e.printStackTrace();
-                    buildLock = false;
-                    return;
-                }
-
-                if (RepositoryCache.FileKey.isGitRepository(new File(LOCAL_PATH + ".git/"), FS.detect()) && hasAtLeastOneReference(repo)) {
-                    // Valid repo found, pull
-                    Git git = new Git(repo);
-                    try {
-                        git.pull().call();
-                    } catch (GitAPIException e) {
-                        updateMessage(updateMessage, "Could not pull changes from remote repository", "-", "Update canceled.");
-                        GECkO.logger.error("[Update] Could not pull changes from remote repository.");
-                        e.printStackTrace();
-                        buildLock = false;
-                        return;
-                    }
-                } else {
-                    // Clone if non-existent or invalid
-                    try {
-                        Git.cloneRepository().setURI(REMOTE_URL).setDirectory(repoDir).call();
-                    } catch (GitAPIException e) {
-                        updateMessage(updateMessage, "Could not clone remote repository", "-", "Update canceled.");
-                        GECkO.logger.error("[Update] Could not clone remote repository.");
-                        e.printStackTrace();
-                        buildLock = false;
-                        return;
-                    }
-                }
-
-                // Switch branch
-                Git git = new Git(repo);
+                // Set target branch
                 String targetBranch;
                 if (args.size() > 0) {
                     targetBranch = args.get(0);
@@ -126,27 +99,77 @@ public class Update extends Command {
                     targetBranch = "master";
                 }
 
+                // Try to open the local repository
+                try {
+                    repo = new FileRepositoryBuilder().setGitDir(new File(LOCAL_PATH + ".git/")).readEnvironment().findGitDir().build();
+                } catch (IOException e) {
+                    gitStatus = "Could not open local repository";
+                    mavenStatus = "-";
+                    updateStatus = "Update canceled.";
+                    flushStatusMessage(msg.getChannel());
+
+                    e.printStackTrace();
+                    statusMessage = null;
+                    return;
+                }
+
+                // Create git object of the local repository
+                Git git = new Git(repo);
+
+                // Clone if non-existent or invalid
+                if (!RepositoryCache.FileKey.isGitRepository(new File(LOCAL_PATH + ".git/"), FS.detect()) || !hasAtLeastOneReference(repo)) {
+                    try {
+                        Git.cloneRepository().setURI(REMOTE_URL).setDirectory(repoDir).call();
+                    } catch (GitAPIException e) {
+                        gitStatus = "Could not clone remote repository.";
+                        mavenStatus = "-";
+                        updateStatus = "Update canceled.";
+                        flushStatusMessage(msg.getChannel());
+
+                        e.printStackTrace();
+                        statusMessage = null;
+                        return;
+                    }
+                }
+
+                // Fetch changes and branches
+                try {
+                    git.fetch().setRefSpecs(new RefSpec("refs/heads/"+targetBranch+":refs/heads/"+targetBranch)).call();
+                } catch (GitAPIException e) {
+                    if (e instanceof TransportException) {
+                        gitStatus = "There is no branch called <" + targetBranch + ">.";
+                    } else {
+                        gitStatus = "Could not fetch changes from remote repository.";
+                        e.printStackTrace();
+                    }
+                    mavenStatus = "-";
+                    updateStatus = "Update canceled.";
+                    flushStatusMessage(msg.getChannel());
+
+                    e.printStackTrace();
+                    statusMessage = null;
+                    return;
+                }
+
                 Ref checkoutResult;
                 try {
                     checkoutResult = git.checkout().setName(targetBranch).call();
                 } catch (GitAPIException e) {
-                    // If it was an invalid reference
-                    if (e instanceof RefNotFoundException) {
-                        updateMessage(updateMessage, "There is no branch called <" + targetBranch + ">", "-", "Update canceled.");
-                    } else {
-                        updateMessage(updateMessage, "Could not switch branch", "-", "Update canceled.");
-                        e.printStackTrace();
-                    }
+                    gitStatus = "Could not switch branches.";
+                    mavenStatus = "-";
+                    updateStatus = "Update canceled.";
+                    flushStatusMessage(msg.getChannel());
 
-                    GECkO.logger.error("[Update] Could not switch branches.");
-                    buildLock = false;
+                    e.printStackTrace();
+                    statusMessage = null;
                     return;
                 }
 
                 gitStatus = "Updated to ``" + checkoutResult.getObjectId().getName().substring(0, 7) + "`` on ``" + checkoutResult.getName() + "``";
-                updateMessage(updateMessage, gitStatus, "Building...", updateStatus);
+                mavenStatus = "Building...";
+                flushStatusMessage(msg.getChannel());
 
-                // The local repo should be up-to-date now, trying to build
+                // The local repo should be up-to-date now, setting up maven
                 InvocationRequest request = new DefaultInvocationRequest();
                 request.setPomFile(new File("build/pom.xml"));
                 request.setGoals(Collections.singletonList("install"));
@@ -156,24 +179,22 @@ public class Update extends Command {
                 request.setErrorHandler(outputHandler);
                 request.setOutputHandler(outputHandler);
 
+                // Build
                 Invoker invoker = new DefaultInvoker().setMavenHome(new File(BIN_PATH + "maven/"));
                 InvocationResult result;
                 try {
                     result = invoker.execute(request);
                 } catch (MavenInvocationException e) {
-                    GECkO.logger.error("[Update] An error occurred while trying to build maven.");
                     e.printStackTrace();
-                    buildLock = false;
+                    statusMessage = null;
                     return;
                 }
 
                 if (result != null && result.getExitCode() == 0) {
-                    GECkO.logger.info("[Update] Maven build successful!");
                     mavenStatus = "Success!";
                     updateStatus = "Restart the bot to apply update.";
-                    updateMessage(updateMessage, gitStatus, mavenStatus, updateStatus);
+                    flushStatusMessage(msg.getChannel());
                 } else {
-                    GECkO.logger.error("[Update] Maven build failed!");
                     if (result == null) {
                         mavenStatus = "An internal maven error occurred";
 
@@ -181,8 +202,8 @@ public class Update extends Command {
                         mavenStatus = "Build failed with error code: " + result.getExitCode();
                     }
 
-                    updateMessage(updateMessage, gitStatus, mavenStatus, updateStatus);
-                    buildLock = false;
+                    flushStatusMessage(msg.getChannel());
+                    statusMessage = null;
                     return;
                 }
 
@@ -192,41 +213,26 @@ public class Update extends Command {
                     pastebinLink = PastebinAPI.createPaste("Build log", writer.toString(), "10M", true);
 
                     if (pastebinLink != null) {
-                        if (!updateStatus.equals("")) {
-                            updateMessage(updateMessage, gitStatus, mavenStatus, updateStatus + "\n**Build log:** " + pastebinLink);
-                        } else {
-                            updateMessage(updateMessage, gitStatus, mavenStatus, "\n**Build log:** " + pastebinLink);
-                        }
-                    } else {
-                        // Connection error, writing to stdout
-                        System.out.println(writer.toString());
+                        updateStatus = "**Build log:** " + pastebinLink + "\n" + updateStatus;
+                        flushStatusMessage(msg.getChannel());
                     }
                 } catch (APIException e) {
                     GECkO.logger.error("[Update] A Pastebin API error occurred, writing output to stdout.");
                     System.out.println(writer.toString());
                 }
             } else {
-                updateMessage(updateMessage, "Could not create new dir for local git repository", "-", "Update canceled.");
+                gitStatus = "Could not create new dir for local git repository";
+                mavenStatus = "-";
+                updateStatus = "Update canceled.";
+                flushStatusMessage(msg.getChannel());
+
                 GECkO.logger.error("[Update] Could not create new directory for local git repo.");
             }
 
-            buildLock = false;
+            statusMessage = null;
         } else {
             CommandUtils.respond(msg, "There is currently another update process running.\nPlease wait for it to finish before starting another update process.");
         }
-    }
-
-    /**
-     * Updates the status message.
-     *
-     * @param msg          the message to update
-     * @param gitStatus    the new git status
-     * @param mavenStatus  the new maven status
-     * @param updateStatus the new update status
-     * @return the updated message
-     */
-    private static IMessage updateMessage(IMessage msg, String gitStatus, String mavenStatus, String updateStatus) {
-        return CommandUtils.editMessage(msg, "**Update Status:**\n- Git Status: " + gitStatus + "\n- Mvn Status: " + mavenStatus + "\n\n" + updateStatus);
     }
 
     /**
@@ -242,5 +248,19 @@ public class Update extends Command {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Updates or creates the update status message.
+     *
+     * @param channel the channel of the message
+     */
+    private static void flushStatusMessage(IChannel channel) {
+        String pattern = "**Update Status:**\n- Git Status: " + gitStatus + "\n- Mvn Status:" + mavenStatus + "\n\n" + updateStatus;
+        if (statusMessage == null) {
+            CommandUtils.respond(channel, pattern);
+        } else {
+            CommandUtils.editMessage(statusMessage, pattern);
+        }
     }
 }

@@ -35,12 +35,12 @@ public class CommandBank {
         CommandRegistry.registerCommand(new Ping());
         CommandRegistry.registerCommand(new Restart());
         CommandRegistry.registerCommand(new Update());
-        CommandRegistry.registerCommand(new Update2());
         CommandRegistry.registerCommand(new Upstart());
 
-        //
+        // Misc
         CommandRegistry.registerCommand(new Whois());
 
+        // Vote
         CommandRegistry.registerCommand(new CVote());
     }
 }

@@ -256,9 +256,9 @@ public class Update extends Command {
      * @param channel the channel of the message
      */
     private static void flushStatusMessage(IChannel channel) {
-        String pattern = "**Update Status:**\n- Git Status: " + gitStatus + "\n- Mvn Status:" + mavenStatus + "\n\n" + updateStatus;
+        String pattern = "**Update Status:**\n- Git Status: " + gitStatus + "\n- Mvn Status: " + mavenStatus + "\n\n" + updateStatus;
         if (statusMessage == null) {
-            CommandUtils.respond(channel, pattern);
+            statusMessage = CommandUtils.respond(channel, pattern);
         } else {
             CommandUtils.editMessage(statusMessage, pattern);
         }

@@ -40,6 +40,9 @@ import sx.blah.discord.handle.obj.IMessage;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 
@@ -63,6 +66,10 @@ public class Update extends Command {
      * Path to the binary folder containing needed binaries like maven
      */
     private static final String BIN_PATH = "bin/";
+    /**
+     * The backup path
+     */
+    private static final String BACKUP_PATH = "backup/";
 
     /**
      * The update message
@@ -103,7 +110,7 @@ public class Update extends Command {
                 try {
                     repo = new FileRepositoryBuilder().setGitDir(new File(LOCAL_PATH + ".git/")).readEnvironment().findGitDir().build();
                 } catch (IOException e) {
-                    gitStatus = "Could not open local repository";
+                    gitStatus = "Could not open local repository.";
                     mavenStatus = "-";
                     updateStatus = "Update canceled.";
                     flushStatusMessage(msg.getChannel());
@@ -134,7 +141,7 @@ public class Update extends Command {
 
                 // Fetch changes and branches
                 try {
-                    git.fetch().setRefSpecs(new RefSpec("refs/heads/"+targetBranch+":refs/heads/"+targetBranch)).call();
+                    git.fetch().setRefSpecs(new RefSpec("refs/heads/" + targetBranch + ":refs/heads/" + targetBranch)).call();
                 } catch (GitAPIException e) {
                     if (e instanceof TransportException) {
                         gitStatus = "There is no branch called <" + targetBranch + ">.";
@@ -166,8 +173,18 @@ public class Update extends Command {
                 }
 
                 gitStatus = "Updated to ``" + checkoutResult.getObjectId().getName().substring(0, 7) + "`` on ``" + checkoutResult.getName() + "``";
-                mavenStatus = "Building...";
-                flushStatusMessage(msg.getChannel());
+
+                // Move current binary to backup folder
+                try {
+                    Files.move(Paths.get("GECkO.jar"), Paths.get(BACKUP_PATH + "GECkO.jar"));
+                    mavenStatus = "Building...";
+                    flushStatusMessage(msg.getChannel());
+                } catch (IOException e) {
+                    mavenStatus = "Failed to move binary.";
+                    updateStatus = "Update canceled.";
+                    flushStatusMessage(msg.getChannel());
+                    return;
+                }
 
                 // The local repo should be up-to-date now, setting up maven
                 InvocationRequest request = new DefaultInvocationRequest();
@@ -179,6 +196,7 @@ public class Update extends Command {
                 request.setErrorHandler(outputHandler);
                 request.setOutputHandler(outputHandler);
 
+
                 // Build
                 Invoker invoker = new DefaultInvoker().setMavenHome(new File(BIN_PATH + "maven/"));
                 InvocationResult result;
@@ -186,6 +204,7 @@ public class Update extends Command {
                     result = invoker.execute(request);
                 } catch (MavenInvocationException e) {
                     e.printStackTrace();
+                    restoreBackup();
                     statusMessage = null;
                     return;
                 }
@@ -196,13 +215,13 @@ public class Update extends Command {
                     flushStatusMessage(msg.getChannel());
                 } else {
                     if (result == null) {
-                        mavenStatus = "An internal maven error occurred";
-
+                        mavenStatus = "An internal maven error occurred.";
                     } else {
                         mavenStatus = "Build failed with error code: " + result.getExitCode();
                     }
 
                     flushStatusMessage(msg.getChannel());
+                    restoreBackup();
                     statusMessage = null;
                     return;
                 }
@@ -221,7 +240,7 @@ public class Update extends Command {
                     System.out.println(writer.toString());
                 }
             } else {
-                gitStatus = "Could not create new dir for local git repository";
+                gitStatus = "Could not create new dir for local git repository.";
                 mavenStatus = "-";
                 updateStatus = "Update canceled.";
                 flushStatusMessage(msg.getChannel());
@@ -261,6 +280,23 @@ public class Update extends Command {
             statusMessage = CommandUtils.respond(channel, pattern);
         } else {
             CommandUtils.editMessage(statusMessage, pattern);
+        }
+    }
+
+    /**
+     * Restores the backup
+     */
+    private static void restoreBackup() {
+        File backup = new File(BACKUP_PATH + "GECkO.jar");
+        if (backup.isFile()) {
+            try {
+                Files.move(backup.toPath(), Paths.get("GECkO.jar"));
+            } catch (IOException e) {
+                GECkO.logger.error("[Update] Could not restore backup.");
+                e.printStackTrace();
+            }
+        } else {
+            GECkO.logger.error("[Update] There is no backup to restore.");
         }
     }
 }

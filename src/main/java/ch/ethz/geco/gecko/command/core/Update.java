@@ -88,10 +88,14 @@ public class Update extends Command {
             updateStatus = "";
             flushStatusMessage(msg.getChannel());
 
-            // Check if directory exists
+            // Check if directories exists
             File repoDir = new File(LOCAL_PATH);
             if (!repoDir.isDirectory()) {
                 repoDir.mkdir();
+            }
+            File backupDir = new File(BACKUP_PATH);
+            if (!backupDir.isDirectory()) {
+                backupDir.mkdir();
             }
 
             if (repoDir.isDirectory()) {
@@ -142,6 +146,7 @@ public class Update extends Command {
                 // Fetch changes and branches
                 try {
                     git.fetch().setRefSpecs(new RefSpec("refs/heads/" + targetBranch + ":refs/heads/" + targetBranch)).call();
+                    git.pull().call();
                 } catch (GitAPIException e) {
                     if (e instanceof TransportException) {
                         gitStatus = "There is no branch called <" + targetBranch + ">.";

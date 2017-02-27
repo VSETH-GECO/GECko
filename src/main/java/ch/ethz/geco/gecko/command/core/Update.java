@@ -40,9 +40,7 @@ import sx.blah.discord.handle.obj.IMessage;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.util.Collections;
 import java.util.List;
 
@@ -181,7 +179,7 @@ public class Update extends Command {
 
                 // Move current binary to backup folder
                 try {
-                    Files.move(Paths.get("GECkO.jar"), Paths.get(BACKUP_PATH + "GECkO.jar"));
+                    Files.move(Paths.get("GECkO.jar"), Paths.get(BACKUP_PATH + "GECkO.jar"), StandardCopyOption.REPLACE_EXISTING);
                     mavenStatus = "Building...";
                     flushStatusMessage(msg.getChannel());
                 } catch (IOException e) {

@@ -232,7 +232,7 @@ public class Update extends Command {
                     pastebinLink = PastebinAPI.createPaste("Build log", writer.toString(), "10M", true);
 
                     if (pastebinLink != null) {
-                        updateStatus = "**Build log:** " + pastebinLink + "\n" + updateStatus;
+                        updateStatus = "**Build log:** ``" + pastebinLink + "``\n" + updateStatus;
                         flushStatusMessage(msg.getChannel());
                     }
                 } catch (APIException e) {

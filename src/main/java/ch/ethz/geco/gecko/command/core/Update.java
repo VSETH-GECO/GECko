@@ -231,10 +231,8 @@ public class Update extends Command {
                 try {
                     pastebinLink = PastebinAPI.createPaste("Build log", writer.toString(), "10M", true);
 
-                    if (pastebinLink != null) {
-                        updateStatus = "**Build log:** ``" + pastebinLink + "``\n" + updateStatus;
-                        flushStatusMessage(msg.getChannel());
-                    }
+                    updateStatus = "**Build log:** ``" + pastebinLink + "``\n" + updateStatus;
+                    flushStatusMessage(msg.getChannel());
                 } catch (APIException e) {
                     GECkO.logger.error("[Update] A Pastebin API error occurred, writing output to stdout.");
                     System.out.println(writer.toString());

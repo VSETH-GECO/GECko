@@ -50,7 +50,6 @@ public class Update extends Command {
         this.setName("update");
         this.setParams("[branch]");
         this.setDescription("Fetches the latest changes and compiles them. It will try to update to the given branch or to master if no branch is given.");
-        this.setRemoveAfterCall(true);
     }
 
     /**
@@ -188,6 +187,8 @@ public class Update extends Command {
                     mavenStatus = "Failed to move binary.";
                     updateStatus = "Update canceled.";
                     flushStatusMessage(msg.getChannel());
+                    e.printStackTrace();
+                    statusMessage = null;
                     return;
                 }
 
@@ -200,7 +201,6 @@ public class Update extends Command {
                 InvocationOutputHandler outputHandler = s -> writer.write(s + "\n");
                 request.setErrorHandler(outputHandler);
                 request.setOutputHandler(outputHandler);
-
 
                 // Build
                 Invoker invoker = new DefaultInvoker().setMavenHome(new File(BIN_PATH + "maven/"));
@@ -225,8 +225,8 @@ public class Update extends Command {
                         mavenStatus = "Build failed with error code: " + result.getExitCode();
                     }
 
-                    flushStatusMessage(msg.getChannel());
                     restoreBackup();
+                    flushStatusMessage(msg.getChannel());
                     statusMessage = null;
                     return;
                 }

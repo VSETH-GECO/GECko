@@ -27,7 +27,6 @@ import sx.blah.discord.handle.obj.IVoiceChannel;
 import sx.blah.discord.util.DiscordException;
 import sx.blah.discord.util.RequestBuffer;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 
@@ -39,21 +38,21 @@ public class Restart extends Command {
 
     @Override
     public void execute(IMessage msg, List<String> args) {
-        GECkO.logger.debug("[RESTART] Getting connected voice channels...");
-        List<IVoiceChannel> connectedVoiceChannels = GECkO.discordClient.getConnectedVoiceChannels();
-        GECkO.logger.debug("[RESTART] Leaving all connected voice channels...");
-        connectedVoiceChannels.stream().filter(voiceChannel -> Objects.equals(voiceChannel.getGuild().getID(), msg.getGuild().getID())).forEach(IVoiceChannel::leave);
         CommandUtils.respond(msg, "**Restarting bot...**");
         CommandUtils.deleteMessage(msg);
 
-        GECkO.logger.debug("[RESTART] Trying to shutdown bot:");
+        GECkO.logger.debug("[Restart] Getting connected voice channels...");
+        List<IVoiceChannel> connectedVoiceChannels = GECkO.discordClient.getConnectedVoiceChannels();
+        GECkO.logger.debug("[Restart] Leaving all connected voice channels...");
+        connectedVoiceChannels.stream().filter(voiceChannel -> Objects.equals(voiceChannel.getGuild().getID(), msg.getGuild().getID())).forEach(IVoiceChannel::leave);
+        GECkO.logger.debug("[Restart] Trying to shutdown bot:");
         RequestBuffer.request(() -> { try {
-            GECkO.logger.debug("[RESTART] - Logging out...");
+            GECkO.logger.debug("[Restart] - Logging out...");
             GECkO.discordClient.logout();
-            GECkO.logger.debug("[RESTART] - calling System.exit(0)...");
+            GECkO.logger.debug("[Restart] - calling System.exit(0)...");
             new Thread(() -> System.exit(0)).start();
         } catch (DiscordException e) {
-            GECkO.logger.debug("[RESTART] An error occured during restart.");
+            GECkO.logger.debug("[Restart] An error occured during restart.");
             e.printStackTrace();
         }});
     }

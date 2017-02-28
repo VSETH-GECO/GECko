@@ -14,32 +14,32 @@
  * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
  * OTHER DEALINGS IN THE SOFTWARE.
  *
- * For more information, please refer to <http://unlicense.org>
+ * For more information, please refer to <http://unlicense.org/>
  */
 
-package ch.ethz.geco.gecko.command;
+package ch.ethz.geco.gecko.rest.gson;
 
-import ch.ethz.geco.gecko.command.core.*;
-import ch.ethz.geco.gecko.command.misc.Whois;
-import ch.ethz.geco.gecko.command.vote.CVote;
+import ch.ethz.geco.gecko.rest.api.GecoAPI;
+import ch.ethz.geco.gecko.rest.gson.deserializer.UserInfoDeserializer;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
-/**
- * This class is just for having all registered commands in one place
- */
-public class CommandBank {
-    /**
-     * Registers all commands in the CommandRegistry
-     */
-    public static void registerCommands() {
-        // Core
-        CommandRegistry.registerCommand(new Ping());
-        CommandRegistry.registerCommand(new Restart());
-        CommandRegistry.registerCommand(new Update());
+public class GsonManager {
+    private static boolean wasInitialized = false;
+    private static Gson gson;
 
-        // Misc
-        CommandRegistry.registerCommand(new Whois());
+    private static void init() {
+        GsonBuilder gsonBuilder = new GsonBuilder();
+        gsonBuilder.registerTypeAdapter(GecoAPI.UserInfo.class, new UserInfoDeserializer());
+        gson = gsonBuilder.create();
+    }
 
-        // Vote
-        CommandRegistry.registerCommand(new CVote());
+    public static Gson getGson() {
+        if (wasInitialized) {
+            return gson;
+        } else {
+            init();
+            return gson;
+        }
     }
 }

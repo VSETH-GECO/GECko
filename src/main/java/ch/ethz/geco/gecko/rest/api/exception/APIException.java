@@ -17,29 +17,19 @@
  * For more information, please refer to <http://unlicense.org>
  */
 
-package ch.ethz.geco.gecko.command;
-
-import ch.ethz.geco.gecko.command.core.*;
-import ch.ethz.geco.gecko.command.misc.Whois;
-import ch.ethz.geco.gecko.command.vote.CVote;
+package ch.ethz.geco.gecko.rest.api.exception;
 
 /**
- * This class is just for having all registered commands in one place
+ * Small wrapper to be able to throw API based errors
  */
-public class CommandBank {
+public class APIException extends Exception {
+    private String message;
+
     /**
-     * Registers all commands in the CommandRegistry
+     * @param message The error message
      */
-    public static void registerCommands() {
-        // Core
-        CommandRegistry.registerCommand(new Ping());
-        CommandRegistry.registerCommand(new Restart());
-        CommandRegistry.registerCommand(new Update());
-
-        // Misc
-        CommandRegistry.registerCommand(new Whois());
-
-        // Vote
-        CommandRegistry.registerCommand(new CVote());
+    public APIException(String message) {
+        super(message);
+        this.message = message;
     }
 }

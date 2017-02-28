@@ -70,8 +70,7 @@ public class CommandHandler implements IListener<MessageReceivedEvent> {
         if (command != null) {
             if (!command.isMentionCommand() && (!msg.getChannel().isPrivate() || command.isAllowPrivateMessage())) {
                 if (command.isForcePrivateReply()) {
-                    IMessage oldmsg = msg;
-                    msg = injectPrivateChannel(oldmsg);
+                    msg = injectPrivateChannel(msg);
                 }
 
                 if (command.getPermissions().isUserPermitted(msg.getGuild(), msg.getAuthor())) {
@@ -90,8 +89,8 @@ public class CommandHandler implements IListener<MessageReceivedEvent> {
                 CommandUtils.deleteMessage(msg);
             }
         } else if (tokens.get(0).startsWith(defaultPrefix)) {
-            CommandUtils.respond(msg, "Unknown command: " + tokens.get(0));
-            CommandUtils.deleteMessage(msg);
+            //CommandUtils.respond(msg, "Unknown command: " + tokens.get(0));
+            //CommandUtils.deleteMessage(msg);
         }
     }
 
@@ -102,21 +101,29 @@ public class CommandHandler implements IListener<MessageReceivedEvent> {
      * @return the message after injection
      */
     private static IMessage injectPrivateChannel(IMessage msg) {
-        return RequestBuffer.request(() -> {
+        return (IMessage) RequestBuffer.request(() -> {
             try {
                 List<Embed> implEmbedded = msg.getEmbedded().stream().map(intfEmbedded -> (Embed) intfEmbedded).collect(Collectors.toList());
-                IMessage message = new Message(msg.getClient(), msg.getID(), msg.getContent(), msg.getAuthor(), msg.getAuthor().getOrCreatePMChannel(),
+
+                return new Message(msg.getClient(), msg.getID(), msg.getContent(), msg.getAuthor(), msg.getAuthor().getOrCreatePMChannel(),
                         msg.getTimestamp(), msg.getEditedTimestamp().orElse(null), msg.mentionsEveryone(),
                         ((Message) msg).getRawMentions(), ((Message) msg).getRawRoleMentions(), msg.getAttachments(),
                         msg.isPinned(), implEmbedded, msg.getReactions(), msg.getWebhookID());
-
-                return message;
             } catch (DiscordException e) {
                 GECkO.logger.error("[CommandHandler] Could not inject private channel.");
                 e.printStackTrace();
-
-                return null;
             }
-        }).get();
+
+            return null;
+        });
+    }
+
+    /**
+     * Forces the command handler to process the given message. Can be used to execute other commands.
+     *
+     * @param message the message to process
+     */
+    public void forceHandle(String message) {
+        handle(new MessageReceivedEvent(new Message(GECkO.discordClient, "self", message, GECkO.discordClient.getOurUser(), GECkO.mainChannel, null, null, false, null, null, null, false, null, null, null)));
     }
 }

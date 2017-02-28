@@ -102,6 +102,8 @@ public class ConfigManager {
         addCoreField("mainChannelID", "Please specify the main channel ID: ");
         addCoreField("defaultPrefix", "Please specify a default command prefix: ");
         addCoreField("timezone", "Please specify the timezone of the bot: ");
+        addCoreField("gecoAPIKey", "Please specify the geco API key: ");
+        addCoreField("pastebinAPIKey", "Please specify the pastebin API key: ");
     }
 
     /**

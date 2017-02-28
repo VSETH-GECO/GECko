@@ -89,8 +89,8 @@ public class CommandHandler implements IListener<MessageReceivedEvent> {
                 CommandUtils.deleteMessage(msg);
             }
         } else if (tokens.get(0).startsWith(defaultPrefix)) {
-            CommandUtils.respond(msg, "Unknown command: " + tokens.get(0));
-            CommandUtils.deleteMessage(msg);
+            //CommandUtils.respond(msg, "Unknown command: " + tokens.get(0));
+            //CommandUtils.deleteMessage(msg);
         }
     }
 

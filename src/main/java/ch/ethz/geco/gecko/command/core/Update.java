@@ -26,6 +26,7 @@ import ch.ethz.geco.gecko.rest.api.PastebinAPI;
 import ch.ethz.geco.gecko.rest.api.exception.APIException;
 import org.apache.maven.shared.invoker.*;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.TransportException;
 import org.eclipse.jgit.lib.Ref;
@@ -163,6 +164,7 @@ public class Update extends Command {
 
                 Ref checkoutResult;
                 try {
+                    git.reset().setMode(ResetCommand.ResetType.HARD).setRef("refs/heads/"+targetBranch);
                     checkoutResult = git.checkout().setName(targetBranch).call();
                 } catch (GitAPIException e) {
                     gitStatus = "Could not switch branches.";

@@ -21,7 +21,7 @@ package ch.ethz.geco.gecko.rest.api;
 
 import ch.ethz.geco.gecko.ConfigManager;
 import ch.ethz.geco.gecko.GECkO;
-import ch.ethz.geco.gecko.rest.RequestWrapper;
+import ch.ethz.geco.gecko.rest.RequestBuilder;
 import ch.ethz.geco.gecko.rest.api.exception.APIException;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
@@ -59,7 +59,7 @@ public class PastebinAPI {
         payload.put("api_paste_expire_date", expire);
 
         try {
-            HttpResponse response = RequestWrapper.postRequest(API_URL + "api_post.php", payload);
+            HttpResponse response = new RequestBuilder(API_URL + "api_post.php").setPayload(payload).post();
             StatusLine statusLine = response.getStatusLine();
             switch (statusLine.getStatusCode()) {
                 case 200:

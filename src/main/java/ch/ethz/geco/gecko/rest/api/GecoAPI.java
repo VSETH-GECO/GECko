@@ -21,7 +21,7 @@ package ch.ethz.geco.gecko.rest.api;
 
 import ch.ethz.geco.gecko.ConfigManager;
 import ch.ethz.geco.gecko.GECkO;
-import ch.ethz.geco.gecko.rest.RequestWrapper;
+import ch.ethz.geco.gecko.rest.RequestBuilder;
 import ch.ethz.geco.gecko.rest.gson.GsonManager;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.io.IOUtils;
@@ -32,7 +32,9 @@ import org.apache.http.StatusLine;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
 
 public class GecoAPI {
     private static final String API_URL = "https://5.230.148.221/api/v1/";
@@ -45,11 +47,10 @@ public class GecoAPI {
      * @throws NoSuchElementException if there is no user linked to the given discord ID
      */
     public static UserInfo getUserInfoByDiscordID(String discordID) throws NoSuchElementException {
-        // Set headers
-        Map<String, String> headers = new HashMap<>();
-        headers.put("Authorization", "Token token=" + ConfigManager.getProperties().getProperty("gecoAPIKey"));
         try {
-            HttpResponse response = RequestWrapper.getRequest(API_URL + "user/discord/" + discordID, headers, true);
+            HttpResponse response = new RequestBuilder(API_URL + "user/discord/" + discordID)
+                    .addHeader("Authorization", "Token token=" + ConfigManager.getProperties().getProperty("gecoAPIKey"))
+                    .ignoreSSL().get();
             StatusLine statusLine = response.getStatusLine();
             switch (statusLine.getStatusCode()) {
                 case 200:
@@ -122,7 +123,7 @@ public class GecoAPI {
      */
     public static List<LanUser> getLanUsers() {
         try {
-            HttpResponse response = RequestWrapper.getRequest(API_URL + "lan/seats/", Collections.emptyMap(), true);
+            HttpResponse response = new RequestBuilder(API_URL + "lan/seats/").ignoreSSL().get();
             StatusLine statusLine = response.getStatusLine();
             switch (statusLine.getStatusCode()) {
                 case 200:

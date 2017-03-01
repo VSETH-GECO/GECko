@@ -37,55 +37,90 @@ import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class RequestWrapper {
+public class RequestBuilder {
+    // TODO: Use static thread-safe HttpClients
     /**
      * An HttpClient which ignores SSL errors. Use this if you don't care about SSL but have to use https.
      */
-    private static HttpClient insecureClient = createSSLIgnore();
+    private HttpClient insecureClient = createSSLIgnore();
 
     /**
      * A default HttpClient which needs a correctly working SSL configuration on the server-side when using https.
      */
-    private static HttpClient secureClient = HttpClients.createDefault();
+    private HttpClient secureClient = HttpClients.createDefault();
 
     /**
-     * Performs a GET request without headers on the given URL.
-     *
-     * @param URL the url to send the request to
-     * @return the HttpResponse of the request
-     * @throws IOException in case of a problem or the connection was aborted
+     * The request fields
      */
-    public static HttpResponse getRequest(String URL) throws IOException {
-        return getRequest(URL, Collections.emptyMap(), false);
+    private String requestURL;
+    private Map<String, String> headers;
+    private Map<String, String> payload;
+    private boolean ignoreSSL = false;
+
+    public RequestBuilder(String requestURL) {
+        this.requestURL = requestURL;
     }
 
     /**
-     * Performs a GET request without headers on the given URL.
+     * Sets the headers of this request.
      *
-     * @param URL     the url to send the request to
-     * @param headers the headers of the request
-     * @return the HttpResponse of the request
-     * @throws IOException in case of a problem or the connection was aborted
+     * @param headers the headers
+     * @return this
      */
-    public static HttpResponse getRequest(String URL, Map<String, String> headers) throws IOException {
-        return getRequest(URL, headers, false);
+    public RequestBuilder setHeaders(Map<String, String> headers) {
+        this.headers = headers;
+        return this;
     }
 
     /**
-     * Performs a GET request on the given URL.
+     * Adds a header to this request
      *
-     * @param URL       the url to send the request to
-     * @param headers   the headers of the request
-     * @param ignoreSSL if it should ignore SSL errors
-     * @return the HttpResponse of the request
-     * @throws IOException in case of a problem or the connection was aborted
+     * @param name  the name of the header
+     * @param value the value of the header
+     * @return this
      */
-    public static HttpResponse getRequest(String URL, Map<String, String> headers, boolean ignoreSSL) throws IOException {
-        HttpGet httpGet = new HttpGet(URL);
+    public RequestBuilder addHeader(String name, String value) {
+        if (headers == null) {
+            headers = new HashMap<>();
+        }
+
+        headers.put(name, value);
+        return this;
+    }
+
+    /**
+     * Sets the payload of this request.
+     *
+     * @param payload the payload
+     * @return this
+     */
+    public RequestBuilder setPayload(Map<String, String> payload) {
+        this.payload = payload;
+        return this;
+    }
+
+    /**
+     * Sets this request to ignore SSL certificate errors.
+     *
+     * @return this
+     */
+    public RequestBuilder ignoreSSL() {
+        ignoreSSL = true;
+        return this;
+    }
+
+    /**
+     * Performs a get request.
+     *
+     * @return the response
+     * @throws IOException
+     */
+    public HttpResponse get() throws IOException {
+        HttpGet httpGet = new HttpGet(requestURL);
 
         // Set headers
         for (Map.Entry<String, String> header : headers.entrySet()) {
@@ -104,42 +139,13 @@ public class RequestWrapper {
     }
 
     /**
-     * Performs a POST request on the given URL without a header.
+     * Performs a post request
      *
-     * @param URL       the url to send the request to
-     * @param payload   the data to send
-     * @return the HttpResponse of the request
-     * @throws IOException in case of a problem or the connection was aborted
+     * @return the response
+     * @throws IOException
      */
-    public static HttpResponse postRequest(String URL, Map<String, String> payload) throws IOException {
-        return postRequest(URL, Collections.emptyMap(), payload, false);
-    }
-
-    /**
-     * Performs a POST request on the given URL.
-     *
-     * @param URL     the url to send the request to
-     * @param headers the headers of the request
-     * @param payload the data to send
-     * @return the HttpResponse of the request
-     * @throws IOException in case of a problem or the connection was aborted
-     */
-    public static HttpResponse postRequest(String URL, Map<String, String> headers, Map<String, String> payload) throws IOException {
-        return postRequest(URL, headers, payload, false);
-    }
-
-    /**
-     * Performs a POST request on the given URL.
-     *
-     * @param URL       the url to send the request to
-     * @param headers   the headers of the request
-     * @param payload   the data to send
-     * @param ignoreSSL if it should ignore SSL errors
-     * @return the HttpResponse of the request
-     * @throws IOException in case of a problem or the connection was aborted
-     */
-    public static HttpResponse postRequest(String URL, Map<String, String> headers, Map<String, String> payload, boolean ignoreSSL) throws IOException {
-        HttpPost httpPost = new HttpPost(URL);
+    public HttpResponse post() throws IOException {
+        HttpPost httpPost = new HttpPost(requestURL);
 
         // Set headers
         for (Map.Entry<String, String> header : headers.entrySet()) {
@@ -175,21 +181,21 @@ public class RequestWrapper {
      * @return an HttpClient which ignores SSL errors
      */
     private static HttpClient createSSLIgnore() {
-        SSLContextBuilder sshbuilder = new SSLContextBuilder();
+        SSLContextBuilder sslBuilder = new SSLContextBuilder();
         try {
-            sshbuilder.loadTrustMaterial(null, new TrustSelfSignedStrategy());
+            sslBuilder.loadTrustMaterial(null, new TrustSelfSignedStrategy());
         } catch (NoSuchAlgorithmException | KeyStoreException e) {
             e.printStackTrace();
         }
-        SSLConnectionSocketFactory sslsf = null;
+        SSLConnectionSocketFactory sslSF = null;
         try {
-            sslsf = new SSLConnectionSocketFactory(sshbuilder.build());
+            sslSF = new SSLConnectionSocketFactory(sslBuilder.build());
         } catch (NoSuchAlgorithmException | KeyManagementException e) {
             e.printStackTrace();
         }
 
         return HttpClients.custom()
-                .setSSLSocketFactory(sslsf)
+                .setSSLSocketFactory(sslSF)
                 .build();
     }
 }

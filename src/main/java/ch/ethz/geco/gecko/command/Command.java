@@ -37,42 +37,82 @@ public abstract class Command {
     private String prefix;
     private CommandPermissions permissions = new CommandPermissions();
 
+    /**
+     * Returns the names of this command. Those are the names which trigger this command.
+     * @return the names of this command
+     */
     public String[] getNames() {
         return names;
     }
 
+    /**
+     * Sets the names of this command. Those are the names which trigger this command.
+     * @param names the names of this command
+     */
     public void setNames(String[] names) {
         this.names = names;
     }
 
+    /**
+     * Sets a single name for this command. Those are the names which trigger this command.
+     * @param name the name of this command
+     */
     public void setName(String name) {
         this.names = new String[]{name};
     }
 
+    /**
+     * Gets the parameters of this command.
+     * @return the parameters of this command
+     */
     public String getParams() {
         return params;
     }
 
+    /**
+     * Sets the parameters of this command. This is mainly used for looking up how to use this command.
+     * @param params the parameters of this command
+     */
     public void setParams(String params) {
         this.params = params;
     }
 
+    /**
+     * Gets the description of this command.
+     * @return the description of this command
+     */
     public String getDescription() {
         return description;
     }
 
+    /**
+     * Sets the description of this command.
+     * @param description the description of this command
+     */
     public void setDescription(String description) {
         this.description = description;
     }
 
+    /**
+     * Gets the prefix of this command.
+     * @return the prefix of this command or null if using default prefix
+     */
     public String getPrefix() {
         return prefix;
     }
 
+    /**
+     * Sets the prefix of this command. NOTE: This overrides the default prefix.
+     * @return
+     */
     public void setPrefix(String prefix) {
         this.prefix = prefix;
     }
 
+    /**
+     * Returns the permissions of this command.
+     * @return the permissions of this command
+     */
     public CommandPermissions getPermissions() {
         return permissions;
     }
@@ -85,18 +125,34 @@ public abstract class Command {
     private boolean forcePrivateReply = false;
     private boolean removeAfterCall = false;
 
+    /**
+     * Returns whether or not this is a mention command.
+     * @return whether or not this is a mention command
+     */
     public boolean isMentionCommand() {
         return isMentionCommand;
     }
 
+    /**
+     * Sets whether or not this is a mention command. If it is, it gets triggered when
+     * @param mentionCommand if this is a mention command
+     */
     public void setMentionCommand(boolean mentionCommand) {
         isMentionCommand = mentionCommand;
     }
 
+    /**
+     * Returns whether or not this command can be triggered via private messages.
+     * @return whether or not this command can be triggered via private messages
+     */
     public boolean isAllowPrivateMessage() {
         return allowPrivateMessage;
     }
 
+    /**
+     * Sets whether or not this command can be triggered via private messages.
+     * @param allowPrivateMessage if this command can be triggered via private messages
+     */
     public void setAllowPrivateMessage(boolean allowPrivateMessage) {
         this.allowPrivateMessage = allowPrivateMessage;
     }

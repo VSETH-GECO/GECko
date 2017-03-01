@@ -33,6 +33,10 @@ import java.util.Set;
 public class CommandPermissions {
     private Set<String> permittedRoleIDs = new HashSet<>();
 
+    /**
+     * Returns a Set of permitted role ID's.
+     * @return the permitted role ID's
+     */
     public Set<String> getPermittedRoleIDs() {
         return permittedRoleIDs;
     }

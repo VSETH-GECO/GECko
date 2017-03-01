@@ -65,17 +65,33 @@ public class CommandHandler implements IListener<MessageReceivedEvent> {
         StrTokenizer tokenizer = new StrTokenizer(text, ' ', '"');
         List<String> tokens = tokenizer.getTokenList();
 
-        Command command = CommandRegistry.getPrefixCommand(tokens.get(0));
+        // Determine type of command
+        Command command;
+        if (tokens.get(0).equals("<@"+GECkO.discordClient.getOurUser().getID()+">")) {
+            if (tokens.size() > 1) {
+                command = CommandRegistry.getMentionCommand(tokens.get(1));
+            } else {
+                return;
+            }
+        } else {
+            command = CommandRegistry.getPrefixCommand(tokens.get(0));
+        }
 
         if (command != null) {
-            if (!command.isMentionCommand() && (!msg.getChannel().isPrivate() || command.isAllowPrivateMessage())) {
+            if (!msg.getChannel().isPrivate() || command.isAllowPrivateMessage()) {
                 if (command.isForcePrivateReply()) {
                     msg = injectPrivateChannel(msg);
                 }
 
                 if (command.getPermissions().isUserPermitted(msg.getGuild(), msg.getAuthor())) {
-                    List<String> args = tokens.subList(1, tokens.size());
-                    GECkO.logger.debug("Calling command <" + tokens.get(0) + "> with arguments: " + args.toString());
+                    List<String> args;
+                    if (!command.isMentionCommand()) {
+                        args = tokens.subList(1, tokens.size());
+                        GECkO.logger.debug("Calling command <" + tokens.get(0) + "> with arguments: " + args.toString());
+                    } else {
+                        args = tokens.subList(2, tokens.size());
+                        GECkO.logger.debug("Calling mention command <" + tokens.get(1) + "> with arguments: " + args.toString());
+                    }
                     command.execute(msg, args);
                 } else {
                     CommandUtils.respond(msg, "You are not permitted to use this command.");
@@ -84,13 +100,7 @@ public class CommandHandler implements IListener<MessageReceivedEvent> {
                 if (command.isRemoveAfterCall()) {
                     CommandUtils.deleteMessage(msg);
                 }
-            } else {
-                CommandUtils.respond(msg, "Unknown command: " + tokens.get(0));
-                CommandUtils.deleteMessage(msg);
             }
-        } else if (tokens.get(0).startsWith(defaultPrefix)) {
-            //CommandUtils.respond(msg, "Unknown command: " + tokens.get(0));
-            //CommandUtils.deleteMessage(msg);
         }
     }
 
@@ -116,14 +126,5 @@ public class CommandHandler implements IListener<MessageReceivedEvent> {
 
             return null;
         });
-    }
-
-    /**
-     * Forces the command handler to process the given message. Can be used to execute other commands.
-     *
-     * @param message the message to process
-     */
-    public void forceHandle(String message) {
-        handle(new MessageReceivedEvent(new Message(GECkO.discordClient, "self", message, GECkO.discordClient.getOurUser(), GECkO.mainChannel, null, null, false, null, null, null, false, null, null, null)));
     }
 }

@@ -50,7 +50,7 @@ public class GecoAPI {
         try {
             HttpResponse response = new RequestBuilder(API_URL + "user/discord/" + discordID)
                     .addHeader("Authorization", "Token token=" + ConfigManager.getProperties().getProperty("gecoAPIKey"))
-                    .ignoreSSL().get();
+                    .get();
             StatusLine statusLine = response.getStatusLine();
             switch (statusLine.getStatusCode()) {
                 case 200:
@@ -123,7 +123,7 @@ public class GecoAPI {
      */
     public static List<LanUser> getLanUsers() {
         try {
-            HttpResponse response = new RequestBuilder(API_URL + "lan/seats/").ignoreSSL().get();
+            HttpResponse response = new RequestBuilder(API_URL + "lan/seats/").get();
             StatusLine statusLine = response.getStatusLine();
             switch (statusLine.getStatusCode()) {
                 case 200:

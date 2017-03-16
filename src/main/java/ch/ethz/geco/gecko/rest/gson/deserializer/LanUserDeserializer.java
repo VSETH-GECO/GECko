@@ -35,7 +35,7 @@ public class LanUserDeserializer implements JsonDeserializer<List<GecoAPI.LanUse
         List<GecoAPI.LanUser> lanUsers = new ArrayList<>();
         for (JsonElement jsonLanUser : jsonLanUsers) {
             JsonObject jsonLanUserObject = jsonLanUser.getAsJsonObject();
-            lanUsers.add(new GecoAPI.LanUser(jsonLanUserObject.get("id").getAsInt(), jsonLanUserObject.get("lan_user2017_id").getAsInt(), jsonLanUserObject.get("status").getAsInt(), jsonLanUserObject.get("username").getAsString()));
+            lanUsers.add(new GecoAPI.LanUser(jsonLanUserObject.get("id").getAsInt(), jsonLanUserObject.get("seatNumber").getAsString(), jsonLanUserObject.get("lan_user2017_id").getAsInt(), jsonLanUserObject.get("status").getAsInt(), jsonLanUserObject.get("username").getAsString()));
         }
 
         return lanUsers;

@@ -153,12 +153,12 @@ public class GecoAPI {
      */
     public static class LanUser {
         int seatID;
-        int seatName;
+        String seatName;
         int lanUserID;
         int status;
         String userName;
 
-        public LanUser(int seatID, int seatName, int lanUserID, int status, String userName) {
+        public LanUser(int seatID, String seatName, int lanUserID, int status, String userName) {
             this.seatID = seatID;
             this.seatName = seatName;
             this.lanUserID = lanUserID;
@@ -170,7 +170,7 @@ public class GecoAPI {
             return seatID;
         }
 
-        public int getSeatName() {
+        public String getSeatName() {
             return seatName;
         }
 

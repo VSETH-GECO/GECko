@@ -37,7 +37,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 
 public class GecoAPI {
-    private static final String API_URL = "https://5.230.148.221/api/v1/";
+    private static final String API_URL = "https://geco.ethz.ch/api/v1/";
 
     /**
      * Tries to get the website user info of the user with the given discord user ID via the API.
@@ -152,20 +152,26 @@ public class GecoAPI {
      * A subclass representing a lan user on the website
      */
     public static class LanUser {
-        int seatNumber;
+        int seatID;
+        int seatName;
         int lanUserID;
         int status;
         String userName;
 
-        public LanUser(int seatNumber, int lanUserID, int status, String userName) {
-            this.seatNumber = seatNumber;
+        public LanUser(int seatID, int seatName, int lanUserID, int status, String userName) {
+            this.seatID = seatID;
+            this.seatName = seatName;
             this.lanUserID = lanUserID;
             this.status = status;
             this.userName = userName;
         }
 
-        public int getSeatNumber() {
-            return seatNumber;
+        public int getSeatID() {
+            return seatID;
+        }
+
+        public int getSeatName() {
+            return seatName;
         }
 
         public int getLanUserID() {

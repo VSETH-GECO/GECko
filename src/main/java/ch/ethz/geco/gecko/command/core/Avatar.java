@@ -34,6 +34,7 @@ public class Avatar extends Command {
         this.setParams("<URL>");
         this.setDescription("Sets the avatar for the bot.");
         this.getPermissions().getPermittedRoleIDs().add("292488871055327232");
+        this.setRemoveAfterCall(true);
     }
 
     @Override

@@ -32,6 +32,7 @@ public class CommandBank {
      */
     public static void registerCommands() {
         // Core
+        CommandRegistry.registerCommand(new Avatar());
         CommandRegistry.registerCommand(new Ping());
         CommandRegistry.registerCommand(new Restart());
         CommandRegistry.registerCommand(new Update());

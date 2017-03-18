@@ -148,20 +148,24 @@ public class RequestBuilder {
         HttpPost httpPost = new HttpPost(requestURL);
 
         // Set headers
-        for (Map.Entry<String, String> header : headers.entrySet()) {
-            httpPost.setHeader(header.getKey(), header.getValue());
+        if (headers != null) {
+            for (Map.Entry<String, String> header : headers.entrySet()) {
+                httpPost.setHeader(header.getKey(), header.getValue());
+            }
         }
 
         // Set payload
-        List<NameValuePair> paramList = new ArrayList<>();
-        for (Map.Entry<String, String> param : payload.entrySet()) {
-            paramList.add(new BasicNameValuePair(param.getKey(), param.getValue()));
-        }
+        if (payload != null) {
+            List<NameValuePair> paramList = new ArrayList<>();
+            for (Map.Entry<String, String> param : payload.entrySet()) {
+                paramList.add(new BasicNameValuePair(param.getKey(), param.getValue()));
+            }
 
-        try {
-            httpPost.setEntity(new UrlEncodedFormEntity(paramList, "UTF-8"));
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            try {
+                httpPost.setEntity(new UrlEncodedFormEntity(paramList, "UTF-8"));
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            }
         }
 
         // Choose the right http client

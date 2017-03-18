@@ -144,6 +144,7 @@ public class Update extends Command {
                 // Fetch changes and branches
                 try {
                     git.fetch().setRefSpecs(new RefSpec("refs/heads/" + targetBranch + ":refs/heads/" + targetBranch)).call();
+                    git.reset().setMode(ResetCommand.ResetType.HARD).setRef("refs/heads/"+targetBranch);
                     git.pull().call();
                 } catch (GitAPIException e) {
                     if (e instanceof TransportException) {

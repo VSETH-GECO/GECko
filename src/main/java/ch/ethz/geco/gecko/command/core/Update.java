@@ -164,6 +164,7 @@ public class Update extends Command {
 
                 Ref checkoutResult;
                 try {
+                    git.reset().setMode(ResetCommand.ResetType.HARD).setRef("refs/heads/"+targetBranch).call();
                     checkoutResult = git.checkout().setName(targetBranch).call();
                 } catch (GitAPIException e) {
                     gitStatus = "Could not switch branches.";

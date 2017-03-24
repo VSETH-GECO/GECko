@@ -153,9 +153,10 @@ public class GecoAPI {
      */
     public static class LanUser {
         int seatID;
-        String seatName;
+        //int webUserID;
         int lanUserID;
         int status;
+        String seatName;
         String userName;
 
         public LanUser(int seatID, String seatName, int lanUserID, int status, String userName) {

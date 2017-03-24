@@ -19,6 +19,8 @@
 
 package ch.ethz.geco.gecko.command.vote;
 
+import ch.ethz.geco.gecko.GECkO;
+
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
@@ -64,6 +66,7 @@ public class VoteManager {
                 // End vote
                 vote.endVote();
                 currentVotes.remove(vote);
+                GECkO.discordClient.getDispatcher().unregisterListener(vote);
             }
         }
     }

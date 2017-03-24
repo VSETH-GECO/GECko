@@ -109,7 +109,7 @@ public class RequestBuilder {
      * @return this
      */
     public RequestBuilder ignoreSSL() {
-        ignoreSSL = true;
+        this.ignoreSSL = true;
         return this;
     }
 

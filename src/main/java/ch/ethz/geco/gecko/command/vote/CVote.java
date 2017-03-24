@@ -20,6 +20,7 @@
 package ch.ethz.geco.gecko.command.vote;
 
 import ch.ethz.geco.gecko.ConfigManager;
+import ch.ethz.geco.gecko.GECkO;
 import ch.ethz.geco.gecko.command.Command;
 import ch.ethz.geco.gecko.command.CommandUtils;
 import sx.blah.discord.handle.obj.IMessage;
@@ -93,6 +94,7 @@ public class CVote extends Command {
                 } else {
                     Vote newVote = new Vote(msg.getChannel(), args.get(0), answers, dateLimit);
                     VoteManager.addVote(newVote);
+                    GECkO.discordClient.getDispatcher().registerListener(newVote);
                 }
             } catch (DateTimeParseException e) {
                 CommandUtils.respond(msg, "Please give me the date/time format I requested. I'm not Wolfram Alpha.");

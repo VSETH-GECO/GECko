@@ -21,6 +21,10 @@ package ch.ethz.geco.gecko.command.vote;
 
 import ch.ethz.geco.gecko.command.CommandUtils;
 import org.apache.commons.lang3.StringUtils;
+import sx.blah.discord.api.events.EventSubscriber;
+import sx.blah.discord.handle.impl.events.ReactionAddEvent;
+import sx.blah.discord.handle.impl.events.ReactionRemoveEvent;
+import sx.blah.discord.handle.impl.obj.Reaction;
 import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IReaction;
@@ -45,12 +49,7 @@ public class Vote {
         this.answers = answers;
         this.timelimit = timelimit;
 
-        String answerString = "";
-        for (String answer : answers) {
-            answerString += StringUtils.capitalize(answer) + ": React to set a reaction for this answer.\n";
-        }
-
-        message = CommandUtils.respond(channel, "--- " + StringUtils.capitalize(question) + " ---\n" + answerString + "\n\n" + "Ends at: " + timelimit.format(DateTimeFormatter.RFC_1123_DATE_TIME));
+        message = CommandUtils.respond(channel, "--- " + StringUtils.capitalize(question) + " ---\n" + getAnswerString() + "\n\n" + "Ends at: " + timelimit.format(DateTimeFormatter.RFC_1123_DATE_TIME));
         /**
          * --- Bla? ---
          * 1) Ja:   React to this message to set a reaction for this answer.
@@ -60,9 +59,17 @@ public class Vote {
          * Ends at: Tue, 3 Jun 2008 11:05:30 GMT
          */
 
-        /**
-         * TODO: Add temporary reactionAdd listener to check for added reactions
-         */
+    }
+
+    private String getAnswerString() {
+        String answerString = "";
+        int i = 1;
+        for (String answer : answers) {
+            answerString += i + ")" + StringUtils.capitalize(answer) + ": React to set a reaction for this answer.\n";
+            i++;
+        }
+
+        return answerString;
     }
 
     public String getQuestion() {
@@ -83,5 +90,15 @@ public class Vote {
 
     public void endVote() {
         CommandUtils.editMessage(message, "It's over man.");
+    }
+
+    @EventSubscriber
+    public void onReactionAddEvent(ReactionAddEvent e) {
+
+    }
+
+    @EventSubscriber
+    public void onReactionRemoveEvent(ReactionRemoveEvent e) {
+
     }
 }

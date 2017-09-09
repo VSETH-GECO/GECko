@@ -78,15 +78,15 @@ public class GECkO {
             CommandHandler.setDefaultPrefix(args[1]);
 
             try {
-                discordClient = builder.withToken(ConfigManager.getProperties().getProperty("token")).login();
+                discordClient = builder.withToken(ConfigManager.getProperties().getProperty("main_token")).login();
             } catch (DiscordException e) {
                 logger.error("Failed to login: " + e.getErrorMessage());
             }
         } else {    // User uses default prefix
-            CommandHandler.setDefaultPrefix(ConfigManager.getProperties().getProperty("defaultPrefix"));
+            CommandHandler.setDefaultPrefix(ConfigManager.getProperties().getProperty("main_defaultPrefix"));
 
             try {
-                discordClient = builder.withToken(ConfigManager.getProperties().getProperty("token")).login();
+                discordClient = builder.withToken(ConfigManager.getProperties().getProperty("main_token")).login();
             } catch (DiscordException e) {
                 logger.error("Failed to login: " + e.getErrorMessage());
             }
@@ -102,7 +102,7 @@ public class GECkO {
      */
     public static void postInit() {
         // Set main channel
-        mainChannel = discordClient.getChannelByID(ConfigManager.getProperties().getProperty("mainChannelID"));
+        mainChannel = discordClient.getChannelByID(ConfigManager.getProperties().getProperty("main_mainChannelID"));
 
         // Register all commands
         CommandBank.registerCommands();

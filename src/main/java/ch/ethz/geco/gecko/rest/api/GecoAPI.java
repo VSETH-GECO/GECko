@@ -50,7 +50,7 @@ public class GecoAPI {
     public static UserInfo getUserInfoByDiscordID(long discordID) throws NoSuchElementException {
         try {
             HttpResponse response = new RequestBuilder(API_URL + "user/discord/" + discordID)
-                    .addHeader("Authorization", "Token token=" + ConfigManager.getProperties().getProperty("gecoAPIKey"))
+                    .addHeader("Authorization", "Token token=" + ConfigManager.getProperties().getProperty("geco_apiKey"))
                     .get();
             StatusLine statusLine = response.getStatusLine();
             switch (statusLine.getStatusCode()) {

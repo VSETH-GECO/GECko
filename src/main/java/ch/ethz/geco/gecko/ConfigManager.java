@@ -98,12 +98,16 @@ public class ConfigManager {
      * Registers all the core fields needed to run the bot.
      */
     public static void addCoreFields() {
-        addCoreField("token", "Please specify the bot token: ");
-        addCoreField("mainChannelID", "Please specify the main channel ID: ");
-        addCoreField("defaultPrefix", "Please specify a default command prefix: ");
-        addCoreField("timezone", "Please specify the timezone of the bot: ");
-        addCoreField("gecoAPIKey", "Please specify the geco API key: ");
-        addCoreField("pastebinAPIKey", "Please specify the pastebin API key: ");
+        addCoreField("main_token", "[Main] Please specify the bot token: ");
+        addCoreField("main_mainChannelID", "[Main] Please specify the main channel ID: ");
+        addCoreField("main_defaultPrefix", "[Main] Please specify a default command prefix: ");
+
+        addCoreField("git_botRepo", "[Git] Please specify the SSH remote repository of the bot: ");
+        addCoreField("git_privateKeyFile", "[Git] Please specify the private key file: ");
+        addCoreField("git_knownHostsFile", "[Git] Please specify known hosts file: ");
+
+        addCoreField("geco_apiKey", "[GECO] Please specify the GECO API Key: ");
+        addCoreField("pastebin_apiKey", "[Pastebin] Please specify the Pastebin API key: ");
     }
 
     /**

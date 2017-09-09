@@ -49,7 +49,7 @@ public class PastebinAPI {
         Map<String, String> payload = new HashMap<>();
 
         // Required fields
-        payload.put("api_dev_key", ConfigManager.getProperties().getProperty("pastebinAPIKey"));
+        payload.put("api_dev_key", ConfigManager.getProperties().getProperty("pastebin_apiKey"));
         payload.put("api_option", "paste");
         payload.put("api_paste_code", text);
 

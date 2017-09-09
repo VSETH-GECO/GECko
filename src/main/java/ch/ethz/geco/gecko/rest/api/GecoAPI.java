@@ -22,6 +22,8 @@ package ch.ethz.geco.gecko.rest.api;
 import ch.ethz.geco.gecko.ConfigManager;
 import ch.ethz.geco.gecko.GECkO;
 import ch.ethz.geco.gecko.rest.RequestBuilder;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -36,6 +38,7 @@ import java.util.NoSuchElementException;
 
 public class GecoAPI {
     private static final String API_URL = "https://geco.ethz.ch/api/v1/";
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * Tries to get the website user info of the user with the given discord user ID via the API.
@@ -131,7 +134,7 @@ public class GecoAPI {
                     IOUtils.copy(entity.getContent(), writer, StandardCharsets.UTF_8);
                     String json = writer.toString();
 
-                    // Deserialize
+                    return objectMapper.readValue(json, objectMapper.getTypeFactory().constructCollectionType(List.class, LanUser.class));
                 default:
                     // Other API errors
                     GECkO.logger.error("[GecoAPI] An API error occurred: " + statusLine.getStatusCode() + " " + statusLine.getReasonPhrase());
@@ -149,37 +152,73 @@ public class GecoAPI {
      * A subclass representing a lan user on the website
      */
     public static class LanUser {
-        int seatID;
-        //int webUserID;
-        int lanUserID;
-        int status;
-        String seatName;
-        String userName;
+        private Integer seatID;
+        private String seatName;
+        private Integer webUserID;
+        private Integer lanUserID;
+        private Integer status;
+        private String userName;
 
-        public LanUser(int seatID, String seatName, int lanUserID, int status, String userName) {
+        public LanUser(@JsonProperty("id") Integer seatID, @JsonProperty("seatNumber") String seatName, @JsonProperty("web_user_id") Integer webUserID,
+                       @JsonProperty("lan_user_id") Integer lanUserID, @JsonProperty("status") Integer status, @JsonProperty("username") String userName) {
             this.seatID = seatID;
             this.seatName = seatName;
+            this.webUserID = webUserID;
             this.lanUserID = lanUserID;
             this.status = status;
             this.userName = userName;
         }
 
-        public int getSeatID() {
+        /**
+         * Returns the seat ID of this lan user.
+         *
+         * @return the seat ID
+         */
+        public Integer getSeatID() {
             return seatID;
         }
 
+        /**
+         * Returns the seat name of this lan user.
+         *
+         * @return
+         */
         public String getSeatName() {
             return seatName;
         }
 
-        public int getLanUserID() {
+        /**
+         * Returns the web user ID of this lan user.
+         *
+         * @return the web user ID
+         */
+        public Integer getWebUserID() {
+            return webUserID;
+        }
+
+        /**
+         * Returns the lan user ID.
+         *
+         * @return the lan user ID
+         */
+        public Integer getLanUserID() {
             return lanUserID;
         }
 
-        public int getStatus() {
+        /**
+         * Returns the payment status of this lan user.
+         *
+         * @return the payment status
+         */
+        public Integer getStatus() {
             return status;
         }
 
+        /**
+         * Returns the user name of this lan user.
+         *
+         * @return the user name
+         */
         public String getUserName() {
             return userName;
         }

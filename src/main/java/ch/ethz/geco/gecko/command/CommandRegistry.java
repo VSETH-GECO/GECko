@@ -28,7 +28,7 @@ public class CommandRegistry {
     /**
      * Stores a mapping of all registered prefixes and another map with a mapping of all command names with the command.
      */
-    private static Map<String, HashMap<String, Command>> prefixCommands = new HashMap<>();
+    private static Map<String, Map<String, Command>> prefixCommands = new HashMap<>();
 
     /**
      * Stores a mapping of all mention commands with the corresponding commands.
@@ -93,6 +93,15 @@ public class CommandRegistry {
     }
 
     /**
+     * Returns all prefix commands with the following mapping: {@code Map<Prefix, Map<Alias, Command Object>>}
+     *
+     * @return all prefix commands
+     */
+    public static Map<String, Map<String, Command>> getPrefixCommands() {
+        return prefixCommands;
+    }
+
+    /**
      * Used to find and get a mention command from the registry.
      *
      * @param name the name of the command
@@ -100,5 +109,14 @@ public class CommandRegistry {
      */
     public static Command getMentionCommand(String name) {
         return mentionCommands.get(name);
+    }
+
+    /**
+     * Reurns all mention commands with the following mapping: {@code Map<Alias, Command Object>}
+     *
+     * @return all mention commands
+     */
+    public static Map<String, Command> getMentionCommands() {
+        return mentionCommands;
     }
 }

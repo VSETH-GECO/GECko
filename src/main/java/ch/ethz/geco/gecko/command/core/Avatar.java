@@ -33,7 +33,7 @@ public class Avatar extends Command {
         this.setName("avatar");
         this.setParams("<URL>");
         this.setDescription("Sets the avatar for the bot.");
-        this.getPermissions().getPermittedRoleIDs().add(GECkO.mainChannel.getGuild().getRolesByName("GECkO Dev").get(0).getID());
+        this.getPermissions().getPermittedRoleIDs().add(GECkO.mainChannel.getGuild().getRolesByName("GECkO Dev").get(0).getLongID());
         this.setRemoveAfterCall(true);
     }
 

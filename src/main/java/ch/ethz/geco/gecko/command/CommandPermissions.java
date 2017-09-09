@@ -31,13 +31,13 @@ import java.util.Set;
  * TODO: somehow add method to check for discord permissions in addition to roles
  */
 public class CommandPermissions {
-    private Set<String> permittedRoleIDs = new HashSet<>();
+    private Set<Long> permittedRoleIDs = new HashSet<>();
 
     /**
      * Returns a Set of permitted role ID's.
      * @return the permitted role ID's
      */
-    public Set<String> getPermittedRoleIDs() {
+    public Set<Long> getPermittedRoleIDs() {
         return permittedRoleIDs;
     }
 
@@ -54,7 +54,7 @@ public class CommandPermissions {
         }
 
         for (IRole userRole : user.getRolesForGuild(guild)) {
-            if (permittedRoleIDs.contains(userRole.getID())) {
+            if (permittedRoleIDs.contains(userRole.getLongID())) {
                 return true;
             }
         }

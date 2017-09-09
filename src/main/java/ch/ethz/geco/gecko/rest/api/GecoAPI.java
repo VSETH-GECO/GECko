@@ -22,8 +22,6 @@ package ch.ethz.geco.gecko.rest.api;
 import ch.ethz.geco.gecko.ConfigManager;
 import ch.ethz.geco.gecko.GECkO;
 import ch.ethz.geco.gecko.rest.RequestBuilder;
-import ch.ethz.geco.gecko.rest.gson.GsonManager;
-import com.google.gson.reflect.TypeToken;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -46,7 +44,7 @@ public class GecoAPI {
      * @return the user info of the website user with the given discord ID, null otherwise
      * @throws NoSuchElementException if there is no user linked to the given discord ID
      */
-    public static UserInfo getUserInfoByDiscordID(String discordID) throws NoSuchElementException {
+    public static UserInfo getUserInfoByDiscordID(long discordID) throws NoSuchElementException {
         try {
             HttpResponse response = new RequestBuilder(API_URL + "user/discord/" + discordID)
                     .addHeader("Authorization", "Token token=" + ConfigManager.getProperties().getProperty("gecoAPIKey"))
@@ -60,7 +58,7 @@ public class GecoAPI {
                     IOUtils.copy(entity.getContent(), writer, StandardCharsets.UTF_8);
                     String json = writer.toString();
 
-                    return GsonManager.getGson().fromJson(json, UserInfo.class);
+                    // Deserialize
                 case 404:
                     // User not found
                     throw new NoSuchElementException();
@@ -133,8 +131,7 @@ public class GecoAPI {
                     IOUtils.copy(entity.getContent(), writer, StandardCharsets.UTF_8);
                     String json = writer.toString();
 
-                    return GsonManager.getGson().fromJson(json, new TypeToken<List<GecoAPI.LanUser>>() {
-                    }.getType());
+                    // Deserialize
                 default:
                     // Other API errors
                     GECkO.logger.error("[GecoAPI] An API error occurred: " + statusLine.getStatusCode() + " " + statusLine.getReasonPhrase());

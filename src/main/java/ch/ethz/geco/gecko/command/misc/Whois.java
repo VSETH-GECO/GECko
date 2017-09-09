@@ -41,7 +41,7 @@ public class Whois extends Command {
             IUser user = msg.getMentions().get(0);
             String message;
             try {
-                GecoAPI.UserInfo userInfo = GecoAPI.getUserInfoByDiscordID(user.getID());
+                GecoAPI.UserInfo userInfo = GecoAPI.getUserInfoByDiscordID(user.getLongID());
                 if (userInfo != null) {
                     message = "**__User: " + user.getName() + "#" + user.getDiscriminator() + "__**\n**GECO:** https://geco.ethz.ch/users/" + userInfo.getUserID();
                     if (userInfo.getAccounts().containsKey("steam")) {

@@ -1,24 +1,24 @@
 /*
- * This is free and unencumbered software released into the public domain.
- *
- * Anyone is free to copy, modify, publish, use, compile, sell, or
- * distribute this software, either in source code form or as a compiled
- * binary, for any purpose, commercial or non-commercial, and by any
- * means.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
- * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
- * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- *
- * For more information, please refer to <http://unlicense.org>
+ *  Stammbot - A Discord Bot for personal use
+ *  Copyright (C) 2016 - 2017
+ *  *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *  *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *  *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package ch.ethz.geco.gecko.rest;
 
+import ch.ethz.geco.gecko.ErrorHandler;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
@@ -27,6 +27,8 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
+import org.apache.http.entity.AbstractHttpEntity;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.ssl.SSLContextBuilder;
@@ -58,7 +60,7 @@ public class RequestBuilder {
      */
     private String requestURL;
     private Map<String, String> headers;
-    private Map<String, String> payload;
+    private AbstractHttpEntity payload;
     private boolean ignoreSSL = false;
 
     public RequestBuilder(String requestURL) {
@@ -93,13 +95,34 @@ public class RequestBuilder {
     }
 
     /**
-     * Sets the payload of this request.
+     * Sets the payload as string.
+     *
+     * @param payload the payload
+     * @return this
+     */
+    public RequestBuilder setPayload(String payload) {
+        this.payload = new StringEntity(payload, "UTF-8");
+        return this;
+    }
+
+    /**
+     * Sets the payload in URL encoded format.
      *
      * @param payload the payload
      * @return this
      */
     public RequestBuilder setPayload(Map<String, String> payload) {
-        this.payload = payload;
+        List<NameValuePair> paramList = new ArrayList<>();
+        for (Map.Entry<String, String> param : payload.entrySet()) {
+            paramList.add(new BasicNameValuePair(param.getKey(), param.getValue()));
+        }
+
+        try {
+            this.payload = new UrlEncodedFormEntity(paramList, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            ErrorHandler.handleError(e);
+        }
+
         return this;
     }
 
@@ -156,16 +179,7 @@ public class RequestBuilder {
 
         // Set payload
         if (payload != null) {
-            List<NameValuePair> paramList = new ArrayList<>();
-            for (Map.Entry<String, String> param : payload.entrySet()) {
-                paramList.add(new BasicNameValuePair(param.getKey(), param.getValue()));
-            }
-
-            try {
-                httpPost.setEntity(new UrlEncodedFormEntity(paramList, "UTF-8"));
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-            }
+            httpPost.setEntity(payload);
         }
 
         // Choose the right http client

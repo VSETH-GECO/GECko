@@ -34,6 +34,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * A wrapper for the Pastebin API.
+ */
 public class PastebinAPI {
     private static final String API_URL = "http://pastebin.com/api/";
 

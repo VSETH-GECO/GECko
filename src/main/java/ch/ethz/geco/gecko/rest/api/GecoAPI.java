@@ -36,6 +36,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
+/**
+ * A wrapper for the GECO Web API.
+ */
 public class GecoAPI {
     private static final String API_URL = "https://geco.ethz.ch/api/v1/";
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -62,6 +65,7 @@ public class GecoAPI {
                     String json = writer.toString();
 
                     // Deserialize
+                    return objectMapper.readValue(json, UserInfo.class);
                 case 404:
                     // User not found
                     throw new NoSuchElementException();
@@ -88,12 +92,18 @@ public class GecoAPI {
         int threads;
         Map<String, String> accounts;
 
-        public UserInfo(int userID, String username, int posts, int threads, Map<String, String> accounts) {
+        public UserInfo(@JsonProperty("id") int userID, @JsonProperty("name") String username, @JsonProperty("posts") int posts, @JsonProperty("threads") int threads) {
             this.userID = userID;
             this.username = username;
             this.posts = posts;
             this.threads = threads;
-            this.accounts = accounts;
+        }
+
+        @JsonProperty("accounts")
+        private void loadAccounts(List<Map<String, String>> accounts) {
+            for (Map<String, String> account : accounts) {
+                this.accounts.put(account.get("type"), account.get("id"));
+            }
         }
 
         public int getUserID() {

@@ -19,9 +19,11 @@
 
 package ch.ethz.geco.gecko.command;
 
-import ch.ethz.geco.gecko.command.core.*;
+import ch.ethz.geco.gecko.command.core.Avatar;
+import ch.ethz.geco.gecko.command.core.Ping;
+import ch.ethz.geco.gecko.command.core.Restart;
+import ch.ethz.geco.gecko.command.core.Update;
 import ch.ethz.geco.gecko.command.misc.Whois;
-import ch.ethz.geco.gecko.command.vote.CVote;
 
 /**
  * This class is just for having all registered commands in one place
@@ -39,8 +41,5 @@ public class CommandBank {
 
         // Misc
         CommandRegistry.registerCommand(new Whois());
-
-        // Vote
-        CommandRegistry.registerCommand(new CVote());
     }
 }

@@ -27,6 +27,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -47,6 +48,7 @@ public class PastebinAPI {
      * @param text  the content of the paste
      * @return a link to the newly created paste
      */
+    @Nullable
     public static String createPaste(String title, String text, String expire, boolean isUnlisted) throws APIException {
         // Preparing payload, see: http://pastebin.com/api
         Map<String, String> payload = new HashMap<>();

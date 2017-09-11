@@ -22,6 +22,8 @@ package ch.ethz.geco.gecko.command;
 import ch.ethz.geco.gecko.ErrorHandler;
 import ch.ethz.geco.gecko.GECkO;
 import org.apache.commons.lang3.text.StrTokenizer;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
 import sx.blah.discord.api.events.IListener;
 import sx.blah.discord.handle.impl.events.guild.channel.message.MessageReceivedEvent;
 import sx.blah.discord.handle.impl.obj.Embed;
@@ -41,6 +43,7 @@ public class CommandHandler implements IListener<MessageReceivedEvent> {
      */
     private static String defaultPrefix = "!";
 
+    @Contract(pure = true)
     public static String getDefaultPrefix() {
         return defaultPrefix;
     }
@@ -61,7 +64,7 @@ public class CommandHandler implements IListener<MessageReceivedEvent> {
      * @return the message after injection
      */
     private static IMessage injectPrivateChannel(IMessage msg) {
-        return (IMessage) RequestBuffer.request(() -> {
+        return RequestBuffer.request(() -> {
             try {
                 List<Embed> implEmbedded = msg.getEmbeds().stream().map(intfEmbedded -> (Embed) intfEmbedded).collect(Collectors.toList());
 
@@ -80,7 +83,7 @@ public class CommandHandler implements IListener<MessageReceivedEvent> {
             }
 
             return null;
-        });
+        }).get();
     }
 
     /**

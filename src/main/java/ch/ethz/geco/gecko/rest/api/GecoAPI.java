@@ -28,6 +28,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -50,6 +51,7 @@ public class GecoAPI {
      * @return the user info of the website user with the given discord ID, null otherwise
      * @throws NoSuchElementException if there is no user linked to the given discord ID
      */
+    @Nullable
     public static UserInfo getUserInfoByDiscordID(long discordID) throws NoSuchElementException {
         try {
             HttpResponse response = new RequestBuilder(API_URL + "user/discord/" + discordID)
@@ -132,6 +134,7 @@ public class GecoAPI {
      *
      * @return a list of lan users if successful, null otherwise
      */
+    @Nullable
     public static List<LanUser> getLanUsers() {
         try {
             HttpResponse response = new RequestBuilder(API_URL + "lan/seats/").get();

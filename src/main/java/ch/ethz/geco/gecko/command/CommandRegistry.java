@@ -20,6 +20,8 @@
 package ch.ethz.geco.gecko.command;
 
 import ch.ethz.geco.gecko.GECkO;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -80,6 +82,7 @@ public class CommandRegistry {
      * @param name the name of the command including the prefix
      * @return the command or null if not existing
      */
+    @Nullable
     public static Command getPrefixCommand(String name) {
         for (String prefix : prefixCommands.keySet()) {
             // If there is a command matching the prefix
@@ -97,6 +100,7 @@ public class CommandRegistry {
      *
      * @return all prefix commands
      */
+    @Contract(pure = true)
     public static Map<String, Map<String, Command>> getPrefixCommands() {
         return prefixCommands;
     }
@@ -107,6 +111,7 @@ public class CommandRegistry {
      * @param name the name of the command
      * @return the command or null if not existing
      */
+    @Contract(pure = true)
     public static Command getMentionCommand(String name) {
         return mentionCommands.get(name);
     }
@@ -116,6 +121,7 @@ public class CommandRegistry {
      *
      * @return all mention commands
      */
+    @Contract(pure = true)
     public static Map<String, Command> getMentionCommands() {
         return mentionCommands;
     }

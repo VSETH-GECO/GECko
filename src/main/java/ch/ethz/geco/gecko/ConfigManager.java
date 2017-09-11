@@ -19,6 +19,8 @@
 
 package ch.ethz.geco.gecko;
 
+import org.jetbrains.annotations.Contract;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -49,6 +51,7 @@ public class ConfigManager {
      *
      * @return the properties
      */
+    @Contract(pure = true)
     public static Properties getProperties() {
         return properties;
     }

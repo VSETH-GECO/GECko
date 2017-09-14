@@ -44,7 +44,7 @@ public class Restart extends Command {
         GECkO.logger.debug("[Restart] Getting connected voice channels...");
         List<IVoiceChannel> connectedVoiceChannels = GECkO.discordClient.getConnectedVoiceChannels();
         GECkO.logger.debug("[Restart] Leaving all connected voice channels...");
-        connectedVoiceChannels.stream().filter(voiceChannel -> Objects.equals(voiceChannel.getGuild().getID(), msg.getGuild().getID())).forEach(IVoiceChannel::leave);
+        connectedVoiceChannels.stream().filter(voiceChannel -> Objects.equals(voiceChannel.getGuild().getLongID(), msg.getGuild().getLongID())).forEach(IVoiceChannel::leave);
         GECkO.logger.debug("[Restart] Trying to shutdown bot:");
         RequestBuffer.request(() -> { try {
             GECkO.logger.debug("[Restart] - Logging out...");

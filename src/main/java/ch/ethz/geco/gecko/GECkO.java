@@ -47,54 +47,71 @@ public class GECkO {
      */
     public static final org.slf4j.Logger logger = LoggerFactory.getLogger(GECkO.class);
 
-    /**
-     * The command handler of the bot.
-     */
-    public static final CommandHandler commandHandler = new CommandHandler();
-
     public static void main(String[] args) {
-        // Init message
-        logger.info("GECkO v0.0.1");
-        logger.info("The official GECO Discord bot.");
+        String token = null;
+        String prefix = null;
+        String configPath = null;
 
-        // Load config files
-        try {
-            ConfigManager.loadConfig();
-            ConfigManager.addCoreFields();
-            ConfigManager.checkCoreFields();
-            ConfigManager.saveConfig();
-        } catch (IOException e) {
-            logger.error("Could not load or create config files: " + e.getMessage());
-            e.printStackTrace();
-            logger.info("Shutting down...");
-            System.exit(0);
+        // Parse options
+        for (int i = 0; i < args.length; i++) {
+            switch (args[i]) {
+                case "--token":
+                    if (i + 1 < args.length) {
+                        token = args[i + 1];
+                    }
+                    break;
+                case "--prefix":
+                    if (i + 1 < args.length) {
+                        prefix = args[i + 1];
+                    }
+                    break;
+                case "--config":
+                    if (i + 1 < args.length) {
+                        configPath = args[i + 1];
+                    }
+                    break;
+                default:
+                    break;
+            }
         }
 
-        // Add shutdown hook
-        Runtime.getRuntime().addShutdownHook(new Thread(GECkO::preShutdown));
+        GECkO.start(token, prefix, configPath);
+    }
 
-        ClientBuilder builder = new ClientBuilder();
-        if (args.length >= 2 && args[0].equals("-p")) {  // User wants to set a custom prefix
-            CommandHandler.setDefaultPrefix(args[1]);
+    public static void start(String token, String prefix, String configPath) {
+        logger.info("GECkO");
+        logger.info("The official GECO Discord bot. 2016 - 2017, Licensed under Unlicense.");
 
-            try {
-                discordClient = builder.withToken(ConfigManager.getProperties().getProperty("main_token")).login();
-            } catch (DiscordException e) {
-                logger.error("Failed to login: " + e.getErrorMessage());
-            }
-        } else {    // User uses default prefix
+        // Initialize config manager
+        if (configPath != null) {
+            ConfigManager.setConfigPath(configPath);
+        }
+
+        ConfigManager.loadConfig();
+        ConfigManager.addCoreFields();
+        ConfigManager.checkCoreFields();
+
+        // Set command prefix
+        if (prefix != null) {
+            CommandHandler.setDefaultPrefix(prefix);
+        } else {
             CommandHandler.setDefaultPrefix(ConfigManager.getProperties().getProperty("main_defaultPrefix"));
-
-            try {
-                discordClient = builder.withToken(ConfigManager.getProperties().getProperty("main_token")).login();
-            } catch (DiscordException e) {
-                logger.error("Failed to login: " + e.getErrorMessage());
-            }
         }
 
-        // Register default event handler
-        EventDispatcher dispatcher = discordClient.getDispatcher();
-        dispatcher.registerListener(new EventHandler());
+        try {
+            // Login with bot token
+            ClientBuilder builder = new ClientBuilder();
+            if (token != null) {
+                discordClient = builder.withToken(token).login();
+            } else {
+                discordClient = builder.withToken(ConfigManager.getProperties().getProperty("main_token")).login();
+            }
+
+            // Register default event handler
+            discordClient.getDispatcher().registerListener(new EventHandler());
+        } catch (DiscordException e) {
+            logger.error("Failed to login: " + e.getErrorMessage());
+        }
     }
 
     /**
@@ -102,10 +119,13 @@ public class GECkO {
      */
     public static void postInit() {
         // Set main channel
-        mainChannel = discordClient.getChannelByID(ConfigManager.getProperties().getProperty("main_mainChannelID"));
+        mainChannel = discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("main_mainChannelID")));
 
         // Register all commands
         CommandBank.registerCommands();
+
+        // Add shutdown hook
+        Runtime.getRuntime().addShutdownHook(new Thread(GECkO::preShutdown));
 
         // Start to listen to commands after initializing everything else
         EventDispatcher dispatcher = discordClient.getDispatcher();
@@ -121,10 +141,6 @@ public class GECkO {
     private static void preShutdown() {
         logger.info("Shutting down...");
 
-        try {
-            ConfigManager.saveConfig();
-        } catch (IOException e) {
-            logger.error("Failed to save config file: " + e.getMessage());
-        }
+        ConfigManager.saveConfig();
     }
 }

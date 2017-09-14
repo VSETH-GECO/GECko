@@ -8,6 +8,8 @@
     <artifactId>gecko</artifactId>
     <version>dev-SNAPSHOT</version>
     <name>GECkO</name>
+    <description>The official GECO Discord bot</description>
+    <inceptionYear>2016</inceptionYear>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -46,28 +48,7 @@
                             <goal>copy-dependencies</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>${project.build.directory}/../../lib</outputDirectory>
-                        </configuration>
-                    </execution>
-
-                    <execution>
-                        <id>copy</id>
-                        <phase>install</phase>
-                        <goals>
-                            <goal>copy</goal>
-                        </goals>
-                        <configuration>
-                            <artifactItems>
-                                <artifactItem>
-                                    <groupId>ch.ethz.geco</groupId>
-                                    <artifactId>gecko</artifactId>
-                                    <version>dev-SNAPSHOT</version>
-                                    <type>jar</type>
-                                    <overWrite>true</overWrite>
-                                    <outputDirectory>${project.build.directory}/../../</outputDirectory>
-                                    <destFileName>GECkO.jar</destFileName>
-                                </artifactItem>
-                            </artifactItems>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
                         </configuration>
                     </execution>
                 </executions>
@@ -82,7 +63,7 @@
                         <manifest>
                             <addClasspath>true</addClasspath>
                             <classpathPrefix>lib/</classpathPrefix>
-                            <mainClass>ch.ethz.geco.gecko.GECkO</mainClass>
+                            <mainClass>ch.ethz.geco.Launcher</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
@@ -104,8 +85,8 @@
     <dependencies>
         <dependency>
             <groupId>com.github.austinv11</groupId>
-            <artifactId>Discord4j</artifactId>
-            <version>2.8.4</version>
+            <artifactId>Discord4J</artifactId>
+            <version>5ddbb3b396</version>
         </dependency>
 
         <dependency>
@@ -130,6 +111,24 @@
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>
             <version>RELEASE</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.googlecode.soundlibs</groupId>
+            <artifactId>mp3spi</artifactId>
+            <version>1.9.5.4</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.googlecode.soundlibs</groupId>
+            <artifactId>tritonus-share</artifactId>
+            <version>0.3.7.4</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.googlecode.soundlibs</groupId>
+            <artifactId>jlayer</artifactId>
+            <version>1.0.1.4</version>
         </dependency>
     </dependencies>
 </project>

@@ -70,7 +70,7 @@ public class ErrorHandler {
         List<StackTraceElement> discordTrace = new ArrayList<>();
         List<StackTraceElement> javaTrace = new ArrayList<>();
         for (StackTraceElement stackTraceElement : stackTraceElements) {
-            if (stackTraceElement.getClassName().startsWith("stammgruppe.")) {
+            if (stackTraceElement.getClassName().startsWith("ch.ethz.geco.gecko")) {
                 stammbotTrace.add(stackTraceElement);
             } else if (stackTraceElement.getClassName().startsWith("sx.blah.")) {
                 discordTrace.add(stackTraceElement);

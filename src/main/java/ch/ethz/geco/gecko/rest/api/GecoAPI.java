@@ -36,6 +36,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 /**
  * A wrapper for the GECO Web API.
@@ -56,7 +57,7 @@ public class GecoAPI {
         try {
             HttpResponse response = new RequestBuilder(API_URL + "user/discord/" + discordID)
                     .addHeader("Authorization", "Token token=" + ConfigManager.getProperties().getProperty("geco_apiKey"))
-                    .get();
+                    .ignoreSSL().get();
             StatusLine statusLine = response.getStatusLine();
             switch (statusLine.getStatusCode()) {
                 case 200:
@@ -88,25 +89,36 @@ public class GecoAPI {
      * A subclass representing a user on the website
      */
     public static class UserInfo {
-        int userID;
-        String username;
-        int posts;
-        int threads;
-        Map<String, String> accounts;
+        public static class Account {
+            @JsonProperty("type")
+            private String type;
 
-        public UserInfo(@JsonProperty("id") int userID, @JsonProperty("name") String username, @JsonProperty("posts") int posts, @JsonProperty("threads") int threads) {
-            this.userID = userID;
-            this.username = username;
-            this.posts = posts;
-            this.threads = threads;
-        }
+            @JsonProperty("id")
+            private String id;
 
-        @JsonProperty("accounts")
-        private void loadAccounts(List<Map<String, String>> accounts) {
-            for (Map<String, String> account : accounts) {
-                this.accounts.put(account.get("type"), account.get("id"));
+            public String getType() {
+                return type;
+            }
+
+            public String getID() {
+                return id;
             }
         }
+
+        @JsonProperty("id")
+        private int userID;
+
+        @JsonProperty("name")
+        private String username;
+
+        @JsonProperty("posts")
+        private int posts;
+
+        @JsonProperty("threads")
+        private int threads;
+
+        @JsonProperty("accounts")
+        private List<Account> accounts;
 
         public int getUserID() {
             return userID;
@@ -124,8 +136,24 @@ public class GecoAPI {
             return threads;
         }
 
-        public Map<String, String> getAccounts() {
+        public List<Account> getAccounts() {
             return accounts;
+        }
+
+        /**
+         * Returns an account by it's type.
+         *
+         * @param type the type of the account to return
+         * @return the account
+         */
+        public Account getAccountByType(String type) {
+            for (Account account : accounts) {
+                if (Objects.equals(account.type, type)) {
+                    return account;
+                }
+            }
+
+            return null;
         }
     }
 

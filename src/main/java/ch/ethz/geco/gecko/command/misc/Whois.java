@@ -44,11 +44,15 @@ public class Whois extends Command {
                 GecoAPI.UserInfo userInfo = GecoAPI.getUserInfoByDiscordID(user.getLongID());
                 if (userInfo != null) {
                     message = "**__User: " + user.getName() + "#" + user.getDiscriminator() + "__**\n**GECO:** https://geco.ethz.ch/users/" + userInfo.getUserID();
-                    if (userInfo.getAccounts().containsKey("steam")) {
-                        message += "\n**Steam:** http://steamcommunity.com/profiles/" + userInfo.getAccounts().get("steam");
+
+                    GecoAPI.UserInfo.Account steamAccount = userInfo.getAccountByType("steam");
+                    if (steamAccount != null) {
+                        message += "\n**Steam:** http://steamcommunity.com/profiles/" + steamAccount.getID();
                     }
-                    if (userInfo.getAccounts().containsKey("battlenet")) {
-                        message += "\n**Battle.net:** " + userInfo.getAccounts().get("battlenet");
+
+                    GecoAPI.UserInfo.Account blizzardAccount = userInfo.getAccountByType("battlenet");
+                    if (blizzardAccount != null) {
+                        message += "\n**Battle.net:** " + blizzardAccount.getID();
                     }
                 } else {
                     message = "An internal error occurred.";

@@ -27,6 +27,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
 import javax.sound.sampled.AudioFormat;
@@ -45,6 +46,7 @@ import java.util.regex.Pattern;
 
 /**
  * A wrapper for the unofficial Acapela API
+ * FIXME: all processing methods are hardcoded for a specific format (16-bit SIGNED-PCM)
  */
 public class AcapelaAPI {
     private static final String API_URL = "http://dmbx.acapela-group.com/DemoHTML5Form_V2.php";
@@ -58,64 +60,166 @@ public class AcapelaAPI {
 
     private static Map<String, Language> languages;
 
+    public static final int MAX_CHARS = 300;
+
     /**
-     * Loads the sound of the given message from Acapela, cleans it up and saves it into a wave file.
+     * Tries to remove noise produced by subtracting the background music.
      *
-     * @param message the message to save
-     * @return if the operation was successful
+     * @param samples the samples to process
+     * @param format  the format of the samples
+     * @return the given samples after noise cancelling
      */
-    public static boolean soundToWav(String message) {
-        AudioInputStream bgSample = null;
-        AudioInputStream msgSample = null;
+    @Contract("null, _ -> null")
+    public static byte[] removeNoise(byte[] samples, AudioFormat format) {
+        if (samples != null) {
+            // Convert byte samples to short for easier processing
+            int frameSize = format.getFrameSize();
+            short[] shortFrames = new short[samples.length / frameSize];
+
+            for (int i = 0; i < samples.length; i += frameSize) {
+                byte[] frame = Arrays.copyOfRange(samples, i, i + frameSize);
+                shortFrames[i / frameSize] = ByteBuffer.wrap(frame).order(ByteOrder.LITTLE_ENDIAN).getShort();
+            }
+
+            // Set a threshold for noise detection
+            short thresholdFraction = 10;
+            short pivotThreshold = (short) (Short.MAX_VALUE / thresholdFraction);
+
+            // Left-side noise cancelling
+            int pivot = 0;
+            for (int i = 0; i < shortFrames.length; i++) {
+                if (Math.abs(shortFrames[i]) > pivotThreshold) {
+                    pivot = i;
+                    break;
+                }
+            }
+
+            boolean cut = false;
+            short cutThreshold = Short.MAX_VALUE / 10000;
+            LinkedList<Short> lastValues = new LinkedList<>();
+            for (int i = pivot; i >= 0; i--) {
+                if (!cut) {
+                    // Have a queue of the last 10 elements
+                    if (lastValues.size() < thresholdFraction) {
+                        lastValues.add((short) Math.abs(shortFrames[i]));
+                    } else {
+                        lastValues.pop();
+                        lastValues.add((short) Math.abs(shortFrames[i]));
+                    }
+
+                    // Calculate average
+                    short sum = 0;
+                    for (int j = 0; j < lastValues.size(); j++) {
+                        sum += lastValues.get(j);
+                    }
+
+                    // If average is below threshold, cut rest of the bytes
+                    short avgFrame = (short) (sum / lastValues.size());
+                    if (avgFrame < cutThreshold) {
+                        cut = true;
+                    }
+                } else {
+                    shortFrames[i] = 0;
+                }
+            }
+
+            // Right-side noise cancelling
+            pivot = 0;
+            for (int i = shortFrames.length - 1; i >= 0; i--) {
+                if (Math.abs(shortFrames[i]) > pivotThreshold) {
+                    pivot = i;
+                    break;
+                }
+            }
+
+            cut = false;
+            lastValues = new LinkedList<>();
+            for (int i = pivot; i < shortFrames.length; i++) {
+                if (!cut) {
+                    // Have a queue of the last 100 elements
+                    if (lastValues.size() < thresholdFraction) {
+                        lastValues.add((short) Math.abs(shortFrames[i]));
+                    } else {
+                        lastValues.pop();
+                        lastValues.add((short) Math.abs(shortFrames[i]));
+                    }
+
+                    // Calculate average
+                    short sum = 0;
+                    for (int j = 0; j < lastValues.size(); j++) {
+                        sum += lastValues.get(j);
+                    }
+
+                    // If average is below threshold, cut rest of the bytes
+                    short avgFrame = (short) (sum / lastValues.size());
+                    if (avgFrame < cutThreshold) {
+                        cut = true;
+                    }
+                } else {
+                    shortFrames[i] = 0;
+                }
+            }
+
+            byte[] cleanFrames = new byte[samples.length];
+            for (int i = 0; i < shortFrames.length; i++) {
+                byte[] cleanFrame = ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putShort(shortFrames[i]).array();
+                System.arraycopy(cleanFrame, 0, cleanFrames, 2 * i, frameSize);
+            }
+
+            return cleanFrames;
+        }
+
+        return null;
+    }
+
+    /**
+     * Subtracts the Acapela background music from the given samples.
+     *
+     * @param samples the samples to process
+     * @param format  the format of the samples
+     * @return the given samples after subtraction
+     */
+    @Nullable
+    public static byte[] subtractBackground(byte[] samples, AudioFormat format) {
+        byte[] bgSamples = null;
         try {
-            bgSample = getSoundSamples(new File(BG_SAMPLE_PATH).toURI().toURL());
-            msgSample = getSoundSamples(new URL(getSoundURL(message)));
+            bgSamples = audioStreamToByteArray(getSoundSamples(new File(BG_SAMPLE_PATH).toURI().toURL()));
         } catch (MalformedURLException e) {
             ErrorHandler.handleError(e);
         }
 
-        if (msgSample != null && bgSample != null) {
-            try {
-                int frameSize = msgSample.getFormat().getFrameSize();
-                ByteArrayOutputStream cleanBytes = new ByteArrayOutputStream();
+        if (samples != null && bgSamples != null) {
+            int frameSize = format.getFrameSize();
+            byte[] cleanBytes = new byte[samples.length];
 
-                byte[] msgBytes = new byte[frameSize];
-                byte[] bgBytes = new byte[frameSize];
+            for (int i = 0; i < samples.length; i += frameSize) {
+                byte[] msgFrame = Arrays.copyOfRange(samples, i, i + frameSize);
+                byte[] bgFrame = Arrays.copyOfRange(bgSamples, i, i + frameSize);
 
-                int samples = 0;
-                while (msgSample.read(msgBytes) != -1) {
-                    if (bgSample.read(bgBytes) == -1) {
-                        ErrorHandler.handleError(new APIException("Message sound is longer than background sample."));
-                    }
+                int msgInt = ByteBuffer.wrap(msgFrame).order(ByteOrder.LITTLE_ENDIAN).getShort();
+                int bgInt = ByteBuffer.wrap(bgFrame).order(ByteOrder.LITTLE_ENDIAN).getShort();
 
-                    int msgInt = ByteBuffer.wrap(msgBytes).order(ByteOrder.LITTLE_ENDIAN).getShort();
-                    int bgInt = ByteBuffer.wrap(bgBytes).order(ByteOrder.LITTLE_ENDIAN).getShort();
-
-                    // Cap under/overflows
-                    int diff = msgInt - bgInt;
-                    if (diff > Short.MAX_VALUE) {
-                        diff = Short.MAX_VALUE;
-                    }
-
-                    if (diff < Short.MIN_VALUE) {
-                        diff = Short.MIN_VALUE;
-                    }
-
-                    // Copy clean bytes to target buffer
-                    cleanBytes.write(ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putShort((short) diff).array());
-
-                    samples++;
+                // Cap under/overflows
+                int diff = msgInt - bgInt;
+                if (diff > Short.MAX_VALUE) {
+                    diff = Short.MAX_VALUE;
                 }
 
-                GECkO.logger.debug("[AcapelaAPI] Processed " + samples + " samples.");
+                if (diff < Short.MIN_VALUE) {
+                    diff = Short.MIN_VALUE;
+                }
 
-                return writeWav(cleanBytes.toByteArray(), msgSample.getFormat());
-            } catch (IOException e) {
-                ErrorHandler.handleError(e);
+                // Copy clean frame to clean samples array
+                byte[] cleanFrame = ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putShort((short) diff).array();
+                System.arraycopy(cleanFrame, 0, cleanBytes, i, frameSize);
             }
+
+            GECkO.logger.debug("[AcapelaAPI] Processed " + (samples.length / format.getFrameSize()) + " samples.");
+
+            return cleanBytes;
         }
 
-        return false;
+        return null;
     }
 
     /**
@@ -125,7 +229,7 @@ public class AcapelaAPI {
      * @param format  the format to use
      * @return if the operation was successful
      */
-    private static boolean writeWav(byte[] samples, AudioFormat format) {
+    public static boolean writeWav(byte[] samples, AudioFormat format) {
         try {
             DataOutputStream wavFile = new DataOutputStream(new FileOutputStream("temp.wav"));
             int sampleRate = (int) format.getSampleRate();
@@ -171,7 +275,7 @@ public class AcapelaAPI {
      * @return the audio stream of the given file
      */
     @Nullable
-    private static AudioInputStream getSoundSamples(URL path) {
+    public static AudioInputStream getSoundSamples(URL path) {
         try {
             AudioInputStream in = AudioSystem.getAudioInputStream(path);
             AudioFormat baseFormat = in.getFormat();
@@ -184,6 +288,30 @@ public class AcapelaAPI {
                     false);
             return AudioSystem.getAudioInputStream(decodedFormat, in);
         } catch (UnsupportedAudioFileException | IOException e) {
+            ErrorHandler.handleError(e);
+        }
+
+        return null;
+    }
+
+    /**
+     * Converts an AudioInputStream to a byte array of samples.
+     *
+     * @param stream the stream to convert
+     * @return the samples of the given stream as byte array
+     */
+    @Nullable
+    public static byte[] audioStreamToByteArray(AudioInputStream stream) {
+        try {
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            byte[] frame = new byte[stream.getFormat().getFrameSize()];
+
+            while (stream.read(frame) != -1) {
+                bytes.write(frame);
+            }
+
+            return bytes.toByteArray();
+        } catch (IOException e) {
             ErrorHandler.handleError(e);
         }
 
@@ -240,7 +368,7 @@ public class AcapelaAPI {
      * @return the sound url or null if something went wrong
      */
     @Nullable
-    private static String getSoundURL(String langID, String voiceID, String message) {
+    public static String getSoundURL(String langID, String voiceID, String message) {
         if (languages == null) {
             loadData();
         }
@@ -292,7 +420,7 @@ public class AcapelaAPI {
      * @param message the message to convert
      * @return the sound url
      */
-    private static String getSoundURL(String message) {
+    public static String getSoundURL(String message) {
         return getSoundURL(DEFAULT_LANG, DEFAULT_VOICE, message);
     }
 

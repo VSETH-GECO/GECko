@@ -64,52 +64,58 @@ public class ErrorHandler {
      * @param e the exception to report
      */
     public static void handleError(Throwable e) {
-        StackTraceElement[] stackTraceElements = e.getStackTrace();
+        try {
 
-        List<StackTraceElement> stammbotTrace = new ArrayList<>();
-        List<StackTraceElement> discordTrace = new ArrayList<>();
-        List<StackTraceElement> javaTrace = new ArrayList<>();
-        for (StackTraceElement stackTraceElement : stackTraceElements) {
-            if (stackTraceElement.getClassName().startsWith("ch.ethz.geco.gecko")) {
-                stammbotTrace.add(stackTraceElement);
-            } else if (stackTraceElement.getClassName().startsWith("sx.blah.")) {
-                discordTrace.add(stackTraceElement);
+            StackTraceElement[] stackTraceElements = e.getStackTrace();
+
+            List<StackTraceElement> stammbotTrace = new ArrayList<>();
+            List<StackTraceElement> discordTrace = new ArrayList<>();
+            List<StackTraceElement> javaTrace = new ArrayList<>();
+            for (StackTraceElement stackTraceElement : stackTraceElements) {
+                if (stackTraceElement.getClassName().startsWith("ch.ethz.geco.gecko")) {
+                    stammbotTrace.add(stackTraceElement);
+                } else if (stackTraceElement.getClassName().startsWith("sx.blah.")) {
+                    discordTrace.add(stackTraceElement);
+                } else {
+                    javaTrace.add(stackTraceElement);
+                }
+            }
+
+            StringBuilder builder = new StringBuilder();
+
+            List<StackTraceElement> listToUse;
+            if (stammbotTrace.size() > 0) {
+                listToUse = stammbotTrace;
+            } else if (discordTrace.size() > 0) {
+                listToUse = discordTrace;
             } else {
-                javaTrace.add(stackTraceElement);
+                listToUse = javaTrace;
             }
-        }
 
-        StringBuilder builder = new StringBuilder();
-
-        List<StackTraceElement> listToUse;
-        if (stammbotTrace.size() > 0) {
-            listToUse = stammbotTrace;
-        } else if (discordTrace.size() > 0) {
-            listToUse = discordTrace;
-        } else {
-            listToUse = javaTrace;
-        }
-
-        for (StackTraceElement traceElement : listToUse) {
-            String[] packagePath = traceElement.getClassName().split("\\.");
-            builder.append("at ").append(packagePath[packagePath.length - 1]).append(".").append(traceElement.getMethodName())
-                    .append("(").append(traceElement.getFileName()).append(":").append(traceElement.getLineNumber()).append(")").append("\n");
-        }
-
-        EmbedBuilder embedBuilder = new EmbedBuilder().withColor(new Color(255, 0, 0))
-                .withTitle(e.getClass().getSimpleName() + ": " + e.getMessage()).withDescription(builder.toString());
-
-        if (GECkO.discordClient.isReady()) {
-            try {
-                RequestBuffer.request(() -> GECkO.mainChannel.sendMessage(embedBuilder.build()));
-            } catch (MissingPermissionsException | DiscordException err) {
-                e.printStackTrace();
-                System.out.println("------------------------------");
-                err.printStackTrace();
+            for (StackTraceElement traceElement : listToUse) {
+                String[] packagePath = traceElement.getClassName().split("\\.");
+                builder.append("at ").append(packagePath[packagePath.length - 1]).append(".").append(traceElement.getMethodName())
+                        .append("(").append(traceElement.getFileName()).append(":").append(traceElement.getLineNumber()).append(")").append("\n");
             }
-        } else {
-            exceptionBuffer.offer(e);
-            startTimer();
+
+            EmbedBuilder embedBuilder = new EmbedBuilder().withColor(new Color(255, 0, 0))
+                    .withTitle(e.getClass().getSimpleName() + ": " + e.getMessage()).withDescription(builder.toString());
+
+            if (GECkO.discordClient.isReady()) {
+                try {
+                    RequestBuffer.request(() -> GECkO.mainChannel.sendMessage(embedBuilder.build()));
+                } catch (MissingPermissionsException | DiscordException err) {
+                    e.printStackTrace();
+                    System.out.println("------------------------------");
+                    err.printStackTrace();
+                }
+            } else {
+                exceptionBuffer.offer(e);
+                startTimer();
+            }
+        } catch (Exception fatal) {
+            e.printStackTrace();
+            fatal.printStackTrace();
         }
     }
 }

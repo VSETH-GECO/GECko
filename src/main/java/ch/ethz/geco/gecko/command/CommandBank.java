@@ -19,6 +19,8 @@
 
 package ch.ethz.geco.gecko.command;
 
+import ch.ethz.geco.gecko.command.audio.Join;
+import ch.ethz.geco.gecko.command.audio.Leave;
 import ch.ethz.geco.gecko.command.core.Avatar;
 import ch.ethz.geco.gecko.command.core.Ping;
 import ch.ethz.geco.gecko.command.core.Restart;
@@ -34,6 +36,10 @@ public class CommandBank {
      * Registers all commands in the CommandRegistry
      */
     public static void registerCommands() {
+        // Audio
+        CommandRegistry.registerCommand(new Join());
+        CommandRegistry.registerCommand(new Leave());
+
         // Core
         CommandRegistry.registerCommand(new Avatar());
         CommandRegistry.registerCommand(new Ping());

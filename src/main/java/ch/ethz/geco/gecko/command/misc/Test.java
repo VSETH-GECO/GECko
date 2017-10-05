@@ -20,7 +20,8 @@
 package ch.ethz.geco.gecko.command.misc;
 
 import ch.ethz.geco.gecko.command.Command;
-import ch.ethz.geco.gecko.rest.api.AcapelaAPI;
+import ch.ethz.geco.gecko.command.CommandUtils;
+import ch.ethz.geco.gecko.rest.api.GecoAPI;
 import sx.blah.discord.handle.obj.IMessage;
 
 import java.util.List;
@@ -32,6 +33,7 @@ public class Test extends Command {
 
     @Override
     public void execute(IMessage msg, List<String> args) {
-        AcapelaAPI.soundToWav("hello test");
+        GecoAPI.UserInfo userInfo = GecoAPI.getUserInfoByDiscordID(163605020271575041L);
+        CommandUtils.respond(msg, userInfo.getUsername());
     }
 }

@@ -193,22 +193,23 @@ public class GecoAPI {
      * A subclass representing a lan user on the website
      */
     public static class LanUser {
+        @JsonProperty("id")
         private Integer seatID;
-        private String seatName;
-        private Integer webUserID;
-        private Integer lanUserID;
-        private Integer status;
-        private String userName;
 
-        public LanUser(@JsonProperty("id") Integer seatID, @JsonProperty("seatNumber") String seatName, @JsonProperty("web_user_id") Integer webUserID,
-                       @JsonProperty("lan_user_id") Integer lanUserID, @JsonProperty("status") Integer status, @JsonProperty("username") String userName) {
-            this.seatID = seatID;
-            this.seatName = seatName;
-            this.webUserID = webUserID;
-            this.lanUserID = lanUserID;
-            this.status = status;
-            this.userName = userName;
-        }
+        @JsonProperty("seatNumber")
+        private String seatName;
+
+        @JsonProperty("web_user_id")
+        private Integer webUserID;
+
+        @JsonProperty("lan_user_id")
+        private Integer lanUserID;
+
+        @JsonProperty("status")
+        private Integer status;
+
+        @JsonProperty("username")
+        private String userName;
 
         /**
          * Returns the seat ID of this lan user.
@@ -222,7 +223,7 @@ public class GecoAPI {
         /**
          * Returns the seat name of this lan user.
          *
-         * @return
+         * @return the seat name
          */
         public String getSeatName() {
             return seatName;

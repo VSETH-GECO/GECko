@@ -127,9 +127,6 @@ public class GECkO {
         // Add shutdown hook
         Runtime.getRuntime().addShutdownHook(new Thread(GECkO::preShutdown));
 
-        // Start announcer
-        //discordClient.getDispatcher().registerListener(new Announcer());
-
         // Start to listen to commands after initializing everything else
         discordClient.getDispatcher().registerListener(new CommandHandler());
 

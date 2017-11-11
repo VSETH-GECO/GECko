@@ -76,7 +76,7 @@ public class CommandHandler implements IListener<MessageReceivedEvent> {
 
                 return new Message(msg.getClient(), msg.getLongID(), msg.getContent(), msg.getAuthor(), msg.getAuthor().getOrCreatePMChannel(),
                         msg.getTimestamp(), msg.getEditedTimestamp().orElse(null), msg.mentionsEveryone(),
-                        mentions, roleMentions, msg.getAttachments(), msg.isPinned(), implEmbedded, msg.getReactions(), msg.getWebhookLongID());
+                        mentions, roleMentions, msg.getAttachments(), msg.isPinned(), implEmbedded, msg.getWebhookLongID(), msg.getType());
             } catch (DiscordException e) {
                 GECkO.logger.error("[CommandHandler] Could not inject private channel.");
                 ErrorHandler.handleError(e);

@@ -22,6 +22,7 @@ package ch.ethz.geco.gecko;
 import ch.ethz.geco.gecko.command.CommandBank;
 import ch.ethz.geco.gecko.command.CommandHandler;
 import ch.ethz.geco.gecko.command.CommandUtils;
+import ch.ethz.geco.gecko.rest.WebHookServer;
 import org.slf4j.LoggerFactory;
 import sx.blah.discord.api.ClientBuilder;
 import sx.blah.discord.api.IDiscordClient;
@@ -75,7 +76,8 @@ public class GECkO {
             }
         }
 
-        GECkO.start(token, prefix, configPath);
+        WebHookServer.start();
+        //GECkO.start(token, prefix, configPath);
     }
 
     public static void start(String token, String prefix, String configPath) {

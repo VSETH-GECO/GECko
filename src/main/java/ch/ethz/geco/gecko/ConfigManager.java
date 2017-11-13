@@ -40,7 +40,7 @@ public class ConfigManager {
     /**
      * The file path of the default config file.
      */
-    private static final String defaultPath = "bot.properties";
+    private static final String defaultPath = "data/bot.properties";
 
     /**
      * The file path of the current confing file.

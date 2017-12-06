@@ -52,7 +52,7 @@ public class AcapelaAPI {
     private static final String API_URL = "http://dmbx.acapela-group.com/DemoHTML5Form_V2.php";
     private static final String DEFAULT_LANG = "sonid10";
     private static final String DEFAULT_VOICE = "WillLittleCreature (emotive voice)";
-    private static final String BG_SAMPLE_PATH = "BG_SAMPLE.mp3";
+    private static final String BG_SAMPLE_PATH = "data/BG_SAMPLE.mp3";
 
     private static final Pattern langPattern = Pattern.compile("id\\s*=\\s*\"[^\"]+\"\\s*value\\s*=\\s*\"([^\"]+)\"[^>]+>\\s*([^<]+\\s?[^\\s<])");
     private static final Pattern voicePattern = Pattern.compile("class\\s*=\\s*\"allvoices\\s*([^\\s]+)\\s*[^\"]*\"\\s*value\\s*=\\s*\"([^\"]+)\"");

@@ -1,43 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration scan="true">
-    <appender name="consoleAppender" class="ch.qos.logback.core.ConsoleAppender">
+    <!-- Hierarchy: TRACE -> DEBUG -> INFO -> WARN -> ERROR -->
+
+    <!-- Send DEBUG - WARN to STDOUT -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <Target>System.out</Target>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <level>DEBUG</level>
+        </filter>
+
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>DENY</onMatch>
+            <onMismatch>ACCEPT</onMismatch>
+        </filter>
+
+        <encoder>
+            <charset>UTF-8</charset>
+            <Pattern>%date{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{20} - %msg%n</Pattern>
+        </encoder>
+    </appender>
+
+    <!-- Send ERROR to STDERR -->
+    <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+        <Target>System.err</Target>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
         </filter>
         <encoder>
             <charset>UTF-8</charset>
-            <Pattern>%d %-4relative [%thread] %-5level %logger{35} - %msg%n</Pattern>
+            <Pattern>%date{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{20} - %msg%n</Pattern>
         </encoder>
-
     </appender>
 
-    <appender name="fileAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <!-- Send DEBUG - WARN to debug.log -->
+    <appender name="DEBUGFILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <level>DEBUG</level>
         </filter>
-        <file>log/debug.log</file>
+
+        <file>data/log/debug.log</file>
+
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!-- daily rollover. Make sure the path matches the one in the file element or else
              the rollover logs are placed in the working directory. -->
-            <fileNamePattern>log/debug_%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>data/log/debug_%d{yyyy-MM-dd}.%i.log</fileNamePattern>
 
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>20MB</maxFileSize>
             </timeBasedFileNamingAndTriggeringPolicy>
-            <!-- keep 30 days' worth of history -->
+            <!-- keep 7 days of history -->
+            <maxHistory>7</maxHistory>
+        </rollingPolicy>
+
+        <encoder>
+            <charset>UTF-8</charset>
+            <Pattern>%date{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{20} - %msg%n</Pattern>
+        </encoder>
+    </appender>
+
+    <!-- Send ERROR to error.log -->
+    <appender name="ERRORFILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+
+        <file>data/log/error.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- daily rollover. Make sure the path matches the one in the file element or else
+             the rollover logs are placed in the working directory. -->
+            <fileNamePattern>data/log/error_%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>20MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <!-- keep 30 days of error logs -->
             <maxHistory>30</maxHistory>
         </rollingPolicy>
 
         <encoder>
             <charset>UTF-8</charset>
-            <pattern>%d %-4relative [%thread] %-5level %logger{35} - %msg%n</pattern>
+            <Pattern>%date{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{20} - %msg%n</Pattern>
         </encoder>
     </appender>
 
-    <root level="ALL">
-        <appender-ref ref="consoleAppender" />
-        <appender-ref ref="fileAppender"/>
-    </root>
+    <root level="DEBUG">
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="STDERR"/>
 
-    <logger name="org.eclipse.jetty" level="WARN"/>
+        <appender-ref ref="DEBUGFILE"/>
+        <appender-ref ref="ERRORFILE"/>
+    </root>
 </configuration>

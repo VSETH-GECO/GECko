@@ -77,7 +77,7 @@ public class ConfigManager {
         try {
             File file = new File(currentPath);
             if (!file.isFile()) {
-                if (file.createNewFile()) {
+                if (!file.createNewFile()) {
                     throw new IOException("Could not create new file: " + currentPath);
                 }
             }

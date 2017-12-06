@@ -19,9 +19,9 @@ node {
              * docker build on the command line */
 
             if (env.BRANCH_NAME == 'master') {
-                image = docker.build("docker.stammgruppe.eu/bass:${env.BUILD_NUMBER}")
+                image = docker.build("docker.stammgruppe.eu/gecko:${env.BUILD_NUMBER}")
             } else if (env.BRANCH_NAME == 'dev') {
-                image = docker.build("docker.stammgruppe.eu/bass-dev:${env.BUILD_NUMBER}")
+                image = docker.build("docker.stammgruppe.eu/gecko-dev:${env.BUILD_NUMBER}")
             }
         }
 

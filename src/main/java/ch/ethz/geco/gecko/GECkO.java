@@ -76,8 +76,8 @@ public class GECkO {
             }
         }
 
-        WebHookServer.start();
-        //GECkO.start(token, prefix, configPath);
+        GECkO.start(token, prefix, configPath);
+        new WebHookServer(8080);
     }
 
     public static void start(String token, String prefix, String configPath) {

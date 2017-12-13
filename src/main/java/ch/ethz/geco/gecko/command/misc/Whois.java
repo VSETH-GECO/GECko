@@ -43,11 +43,11 @@ public class Whois extends Command {
             try {
                 GecoAPI.UserInfo userInfo = GecoAPI.getUserInfoByDiscordID(user.getLongID());
                 if (userInfo != null) {
-                    message = "**__User: " + user.getName() + "#" + user.getDiscriminator() + "__**\n**GECO:** https://geco.ethz.ch/user/" + userInfo.getUserID();
+                    message = "**__User: " + user.getName() + "#" + user.getDiscriminator() + "__**\n**GECO:** <https://geco.ethz.ch/user/" + userInfo.getUserID() + ">";
 
                     GecoAPI.UserInfo.Account steamAccount = userInfo.getAccountByType("steam");
                     if (steamAccount != null) {
-                        message += "\n**Steam:** http://steamcommunity.com/profiles/" + steamAccount.getID();
+                        message += "\n**Steam:** <http://steamcommunity.com/profiles/" + steamAccount.getID() + ">";
                     }
 
                     GecoAPI.UserInfo.Account blizzardAccount = userInfo.getAccountByType("battlenet");

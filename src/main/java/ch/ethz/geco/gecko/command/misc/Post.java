@@ -20,28 +20,10 @@
 package ch.ethz.geco.gecko.command.misc;
 
 import ch.ethz.geco.gecko.command.Command;
-import ch.ethz.geco.gecko.command.CommandUtils;
-import ch.ethz.geco.gecko.rest.api.GecoAPI;
-import sun.misc.MessageUtils;
-import sx.blah.discord.handle.obj.IMessage;
-import sx.blah.discord.util.MessageHistory;
 
-import java.util.List;
+/**
+ * Can be used to post messages via the bot, to be able to post advanced messages with custom embeds and stuff like this.
+ */
+public class Post extends Command {
 
-public class Test extends Command {
-    public Test() {
-        this.setName("test");
-    }
-
-    @Override
-    public void execute(IMessage msg, List<String> args) {
-        MessageHistory messageHistory = msg.getChannel().getMessageHistory(5);
-
-        StringBuilder stringBuilder = new StringBuilder();
-        for (int i = 0; i < messageHistory.size(); i++) {
-            stringBuilder.append(i).append(": ").append(messageHistory.get(i).getContent()).append("\n");
-        }
-
-        CommandUtils.respond(msg, stringBuilder.toString());
-    }
 }

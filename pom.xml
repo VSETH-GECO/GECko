@@ -112,7 +112,7 @@
         <dependency>
             <groupId>com.github.austinv11</groupId>
             <artifactId>Discord4J</artifactId>
-            <version>2.9.2</version>
+            <version>4058cb68578cbc0213a4e9512198452676462a92</version>
         </dependency>
 
         <dependency>

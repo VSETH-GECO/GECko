@@ -32,6 +32,7 @@ import sx.blah.discord.util.EmbedBuilder;
 import sx.blah.discord.util.MessageHistory;
 
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -51,9 +52,10 @@ public class MediaSynchronizer {
     private static final Pattern idPattern = Pattern.compile("/(\\d+)/?");
 
     /**
-     * Loads the news and events from the website.
+     * Loads the news from the website. This should only be used once every restart.
+     * It will load last page of news and check for every existing news entry if it's up-to-date.
      */
-    public static void loadMedia() {
+    public static void loadNews() {
         try {
             HttpResponse response = new RequestBuilder("https://geco.ethz.ch/api/v2/web/news")
                     .addHeader("Authorization", "Token token=" + ConfigManager.getProperties().getProperty("geco_apiKey"))
@@ -65,8 +67,26 @@ public class MediaSynchronizer {
 
             switch (statusLine.getStatusCode()) {
                 case 200:
+                    // Directly map json to embed objects
                     List<EmbedObject> embeds = DiscordUtils.MAPPER.readValue(response.getEntity().getContent(), DiscordUtils.MAPPER.getTypeFactory().constructCollectionType(List.class, EmbedObject.class));
                     MessageHistory newsHistory = newsChannel.getMessageHistory(10);
+
+                    // Sort embeds by news ID or remove them if they don't have a news ID
+                    embeds.sort(Comparator.comparing(embedObject -> {
+                        Matcher embedIDMatcher = idPattern.matcher(embedObject.url);
+
+                        if (embedIDMatcher.find()) {
+                            return Integer.parseInt(embedIDMatcher.group(1));
+                        } else {
+                            // Remove embed if it has an invalid ID
+                            embeds.remove(embedObject);
+                            ErrorHandler.handleError(new APIException("Received news post without ID. Contact the Web Master!"));
+                            return 0;
+                        }
+                    }));
+
+
+
 
                     for (EmbedObject embed : embeds) {
                         Matcher embedIDMatcher = idPattern.matcher(embed.url);

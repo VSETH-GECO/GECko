@@ -21,6 +21,8 @@ package ch.ethz.geco.gecko;
 
 import ch.ethz.geco.gecko.rest.RequestBuilder;
 import ch.ethz.geco.gecko.rest.api.exception.APIException;
+import com.fasterxml.jackson.databind.deser.DataFormatReaders;
+import org.apache.commons.collections4.bidimap.DualHashBidiMap;
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
 import sx.blah.discord.api.internal.DiscordUtils;
@@ -32,9 +34,7 @@ import sx.blah.discord.util.EmbedBuilder;
 import sx.blah.discord.util.MessageHistory;
 
 import java.io.IOException;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -43,8 +43,8 @@ import java.util.regex.Pattern;
  * See {@link ch.ethz.geco.gecko.rest.WebHookServer} for details.
  */
 public class MediaSynchronizer {
-    private static final IChannel newsChannel = GECkO.mainChannel; //GECkO.discordClient.getChannelByID(366931520667123712L);
-    private static final IChannel eventChannel = GECkO.mainChannel; //GECkO.discordClient.getChannelByID(366931534579630081L);
+    private static final IChannel newsChannel = GECkO.discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("media_newsChannelID")));
+    private static final IChannel eventChannel = GECkO.discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("media_eventChannelID")));
 
     private static final LinkedHashMap<Integer, IMessage> news = new LinkedHashMap<>();
     private static final LinkedHashMap<Integer, IMessage> events = new LinkedHashMap<>();
@@ -58,7 +58,7 @@ public class MediaSynchronizer {
     public static void loadNews() {
         try {
             HttpResponse response = new RequestBuilder("https://geco.ethz.ch/api/v2/web/news")
-                    .addHeader("Authorization", "Token token=" + ConfigManager.getProperties().getProperty("geco_apiKey"))
+                    .addHeader("X-API-KEY", ConfigManager.getProperties().getProperty("geco_apiKey"))
                     .get();
 
             StatusLine statusLine = response.getStatusLine();
@@ -68,85 +68,123 @@ public class MediaSynchronizer {
             switch (statusLine.getStatusCode()) {
                 case 200:
                     // Directly map json to embed objects
-                    List<EmbedObject> embeds = DiscordUtils.MAPPER.readValue(response.getEntity().getContent(), DiscordUtils.MAPPER.getTypeFactory().constructCollectionType(List.class, EmbedObject.class));
+                    List<EmbedObject> webEmbeds = DiscordUtils.MAPPER.readValue(response.getEntity().getContent(), DiscordUtils.MAPPER.getTypeFactory().constructCollectionType(List.class, EmbedObject.class));
+                    DualHashBidiMap<Integer, EmbedObject> webEmbedMap = new DualHashBidiMap<>();
+
                     MessageHistory newsHistory = newsChannel.getMessageHistory(10);
+                    DualHashBidiMap<Integer, IMessage> newsPostMap = new DualHashBidiMap<>();
 
                     // Sort embeds by news ID or remove them if they don't have a news ID
-                    embeds.sort(Comparator.comparing(embedObject -> {
-                        Matcher embedIDMatcher = idPattern.matcher(embedObject.url);
+                    webEmbeds.sort(Comparator.comparing(embedObject -> {
+                        Matcher idMatcher = idPattern.matcher(embedObject.url);
 
-                        if (embedIDMatcher.find()) {
-                            return Integer.parseInt(embedIDMatcher.group(1));
+                        if (idMatcher.find()) {
+                            int id = Integer.parseInt(idMatcher.group(1));
+                            webEmbedMap.put(id, embedObject);
+                            return id;
                         } else {
                             // Remove embed if it has an invalid ID
-                            embeds.remove(embedObject);
-                            ErrorHandler.handleError(new APIException("Received news post without ID. Contact the Web Master!"));
+                            webEmbeds.remove(embedObject);
+                            GECkO.logger.warn("Received news post without ID. Contact the Web Master!");
                             return 0;
                         }
                     }));
 
+                    // Sort and validate news history
+                    newsHistory.sort(Comparator.comparing(message -> {
+                        IEmbed embed = message.getEmbeds().get(0);
 
-
-
-                    for (EmbedObject embed : embeds) {
-                        Matcher embedIDMatcher = idPattern.matcher(embed.url);
-                        if (embedIDMatcher.find()) {
-                            int embedID = Integer.parseInt(embedIDMatcher.group(1));
-
-                            for (IMessage message : newsHistory) {
-                                IEmbed messageEmbed = message.getEmbeds().get(0);
-                                if (messageEmbed == null) {
-                                    message.delete();
-                                    continue;
-                                }
-
-                                Matcher messIDMatcher = idPattern.matcher(messageEmbed.getUrl());
-
-
-                            }
-                        } else {
-                            ErrorHandler.handleError(new APIException("Received news post without ID. Contact the Web Master!"));
-                        }
-                    }
-
-                    int lastID = -1;
-                    for (IMessage newsPost : newsHistory) {
-                        IEmbed embed = newsPost.getEmbeds().get(0);
                         if (embed != null) {
-                            String url = embed.getUrl();
-                            Matcher idMatcher = idPattern.matcher(url);
-                            if (idMatcher.find()) {
-                                int newsID = Integer.valueOf(idMatcher.group(1));
-                                if (newsID > lastID) {
-                                    setNews(newsID, embedToObject(embed));
-                                } else {
+                            Matcher idMatcher = idPattern.matcher(embed.getUrl());
 
-                                }
-                            } else {
-                                GECkO.logger.warn("[MediaSynchronizer] Loaded message with invalid news id, deleting...");
-                                newsPost.delete();
+                            if (idMatcher.find()) {
+                                int id = Integer.parseInt(idMatcher.group(1));
+                                newsPostMap.put(id, message);
+                                return id;
                             }
-                        } else {
-                            GECkO.logger.warn("[MediaSynchronizer] Loaded message with invalid embed, deleting...");
+                        }
+
+                        // Remove message if something fails, we will repost missing messages later on.
+                        newsHistory.remove(message);
+                        message.delete();
+                        GECkO.logger.warn("Found invalid message in news channel!");
+                        return 0;
+                    }));
+
+                    // Remove old news
+                    for (IMessage newsPost : newsHistory) {
+                        Integer newsID = newsPostMap.getKey(newsPost);
+
+                        if (!webEmbedMap.containsKey(newsID)) {
+                            newsHistory.remove(newsPost);
+                            newsPostMap.remove(newsID, newsPost);
                             newsPost.delete();
                         }
                     }
 
+                    // At this point, all messages which were not in the API response should have been removed
+                    // and all remaining messages should have been sorted ascending by their web ID (not Discord ID!)
+
+                    // We will then iterate through the message list and the embed list we got from the REST API at the
+                    // same time. If an embed id matches a message id, we will verify the content of the message and modify
+                    // it, if there were changes. If the embed id is not equal to the message id, we will override the
+                    // current message with the current embed. When were out of messages but there are still embeds left,
+                    // we will simply post new messages. Example:
+
+                    /*
+                     * Scenario:
+                     * Embed ID (Web) | Message ID    | Operation | Result ID
+                     *
+                     * 8              | 8             | 8  (check and edit)
+                     * 9              | 12            | 9  (override)
+                     * 10             | x             | 10 (post)
+                     * 11             | x             | 11 (post)
+                     * 12             | x             | 12 (post)
+                     *
+                     */
+
+                    newsChannel.sendMessage(processImages(extendAuthorIconUrl(webEmbeds.get(8))));
+
+                    /*
+                    for (int i = 0; i < webEmbeds.size(); i++) {
+                        EmbedObject webEmbed = webEmbeds.get(i);
+                        int webID = webEmbedMap.getKey(webEmbed);
+
+                        // If we have more embeds than messages in the news history, post new messages
+                        if (i >= newsHistory.size()) {
+                            setNews(webID, webEmbed);
+                        } else { // Otherwise, either replace or validate the news history
+                            IMessage localNews = newsHistory.get(i);
+                            int localID = newsPostMap.getKey(localNews);
+
+                            // If local and web embed have the same news ID, validate and update local content
+                            if (webID == localID) {
+                                if (!embedEqualsEmbedObject(localNews.getEmbeds().get(0), webEmbed)) {
+                                    news.put(webID, localNews.edit(webEmbed));
+                                } else {
+                                    GECkO.logger.debug("Local news post " + webID + " is up-to-date.");
+                                }
+                            } else { // Otherwise override local embed with web embed
+                                news.put(webID, localNews.edit(webEmbed));
+                            }
+                        }
+                    }*/
+
                     break;
-                case 400:
-                    ErrorHandler.handleError(new IOException("Bad Request"));
+                case 400: // Bad Request
+                    ErrorHandler.handleError(new APIException("Bad Request"));
                     break;
-                case 401:
-                    ErrorHandler.handleError(new IOException("Bot is unauthorized."));
+                case 401: // Unauthorized
+                    ErrorHandler.handleError(new APIException("Bot is unauthorized."));
                     break;
-                case 403:
-                    ErrorHandler.handleError(new IOException("Forbidden"));
+                case 403: // Forbidden
+                    ErrorHandler.handleError(new APIException("Forbidden"));
                     break;
-                case 404:
-                    ErrorHandler.handleError(new IOException("Not found"));
+                case 404: // Not Found
+                    ErrorHandler.handleError(new APIException("Not found"));
                     break;
-                case 500:
-                    ErrorHandler.handleError(new IOException("Internal Server Error"));
+                case 500: // Internal Server Error
+                    ErrorHandler.handleError(new APIException("Internal Server Error"));
                     break;
             }
         } catch (IOException e) {
@@ -180,7 +218,7 @@ public class MediaSynchronizer {
      * @param message the embed to update or add
      */
     public static void setNews(int id, EmbedObject message) {
-        setEvent(id, message, true);
+        setNews(id, message, true);
     }
 
     /**
@@ -192,7 +230,7 @@ public class MediaSynchronizer {
      */
     public static void setEvent(int id, EmbedObject message, boolean raw) {
         if (raw) {
-            message = processImages(message);
+            message = processImages(extendAuthorIconUrl(message));
         }
 
         // Set message color
@@ -234,24 +272,46 @@ public class MediaSynchronizer {
     }
 
     /**
+     * Extends the author icon url to the absolute address instead of relative address.
+     *
+     * @param raw the embed to process
+     * @return the embed with fixed icon url.
+     */
+    private static EmbedObject extendAuthorIconUrl(EmbedObject raw) {
+        raw.author.icon_url = "https://geco.ethz.ch" + raw.author.icon_url;
+        return raw;
+    }
+
+    /**
      * Removes all image tags from the description and adds the first image as the main image.
      *
      * @param raw the embed with unprocessed description
      * @return the embed with image tags removed and first image added as main image.
      */
     private static EmbedObject processImages(EmbedObject raw) {
-        // Get first image
-        Pattern imageURLPattern = Pattern.compile("!\\[[^]]*]\\(([^)]*)\\)");
-        Matcher matcher = imageURLPattern.matcher(raw.description);
-        if (matcher.find()) {
-            String imageURL = matcher.group(1);
+        Pattern youtubePattern = Pattern.compile("http(?:s?)://(?:www\\.)?youtu(?:be\\.com/watch\\?v=|\\.be/)[\\w\\-_]*(&(amp;)?\u200C\u200B[\\w?\u200C\u200B=]*)?");
+        Pattern imagePattern = Pattern.compile("!\\[[^]]*]\\(([^)]*)\\)");
+        Pattern nestedImagePattern = Pattern.compile("\\[!\\[([^]]*)]\\([^)]*\\)]\\(([^)]*)\\)");
+        Matcher imageMatcher = imagePattern.matcher(raw.description);
 
-            EmbedObject.ImageObject imageObject = new EmbedObject.ImageObject();
-            imageObject.url = imageURL;
-            raw.image = imageObject;
+        // Find first image and use it as message image, remove all remaining images.
+        if (imageMatcher.find()) {
+            Matcher nestedMatcher = nestedImagePattern.matcher(raw.description);
+            if (nestedMatcher.find()) {
+                Matcher youtubeMatcher = youtubePattern.matcher(nestedMatcher.group(2));
+                nestedMatcher.group(1);
 
-            // Remove all image tags
-            raw.description = raw.description.replaceAll("!\\[[^]]*]\\([^)]*\\)", "");
+                //nestedMatcher.replaceFirst()
+            } else {
+                String imageURL = imageMatcher.group(1);
+
+                EmbedObject.ImageObject imageObject = new EmbedObject.ImageObject();
+                imageObject.url = imageURL;
+                raw.image = imageObject;
+
+                // Remove all image tags
+                raw.description = raw.description.replaceAll("!\\[[^]]*]\\([^)]*\\)", "");
+            }
         }
 
         return raw;
@@ -281,13 +341,20 @@ public class MediaSynchronizer {
         return embedBuilder.build();
     }
 
-    private static boolean isEqual(IEmbed e1, IEmbed e2) {
-        return e1.getAuthor().getIconUrl().equals(e2.getAuthor().getIconUrl()) &&
-                e1.getAuthor().getName().equals(e2.getAuthor().getName()) &&
-                e1.getAuthor().getUrl().equals(e2.getAuthor().getUrl()) &&
-                e1.getTitle().equals(e2.getTitle()) &&
-                e1.getUrl().equals(e2.getUrl()) &&
-                e1.getDescription().equals(e2.getDescription()) &&
-                e1.getFooter().getText().equals(e2.getFooter().getText());
+    /**
+     * Returns whether or not the given embeds are the same in terms of a news or event post.
+     *
+     * @param e1 the first embed
+     * @param e2 the second embed
+     * @return if the two embeds are equal
+     */
+    private static boolean embedEqualsEmbedObject(IEmbed e1, EmbedObject e2) {
+        return e1.getAuthor().getIconUrl().equals(e2.author.icon_url) &&
+                e1.getAuthor().getName().equals(e2.author.name) &&
+                e1.getAuthor().getUrl().equals(e2.author.url) &&
+                e1.getTitle().equals(e2.title) &&
+                e1.getUrl().equals(e2.url) &&
+                e1.getDescription().equals(e2.description) &&
+                e1.getFooter().getText().equals(e2.footer.text);
     }
 }

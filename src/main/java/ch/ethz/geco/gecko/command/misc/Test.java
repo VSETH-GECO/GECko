@@ -19,6 +19,7 @@
 
 package ch.ethz.geco.gecko.command.misc;
 
+import ch.ethz.geco.gecko.MediaSynchronizer;
 import ch.ethz.geco.gecko.command.Command;
 import ch.ethz.geco.gecko.command.CommandUtils;
 import ch.ethz.geco.gecko.rest.api.GecoAPI;
@@ -35,13 +36,6 @@ public class Test extends Command {
 
     @Override
     public void execute(IMessage msg, List<String> args) {
-        MessageHistory messageHistory = msg.getChannel().getMessageHistory(5);
-
-        StringBuilder stringBuilder = new StringBuilder();
-        for (int i = 0; i < messageHistory.size(); i++) {
-            stringBuilder.append(i).append(": ").append(messageHistory.get(i).getContent()).append("\n");
-        }
-
-        CommandUtils.respond(msg, stringBuilder.toString());
+        MediaSynchronizer.loadNews();
     }
 }

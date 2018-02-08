@@ -112,7 +112,7 @@
         <dependency>
             <groupId>com.github.austinv11</groupId>
             <artifactId>Discord4J</artifactId>
-            <version>4058cb68578cbc0213a4e9512198452676462a92</version>
+            <version>ee46f68d1ba59cbf8ba3cf96ec019859b12e302f</version>
         </dependency>
 
         <dependency>
@@ -143,6 +143,12 @@
             <groupId>org.nanohttpd</groupId>
             <artifactId>nanohttpd</artifactId>
             <version>2.3.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-collections4</artifactId>
+            <version>4.1</version>
         </dependency>
 
         <dependency>

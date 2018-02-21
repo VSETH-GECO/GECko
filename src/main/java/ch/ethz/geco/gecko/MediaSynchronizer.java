@@ -21,7 +21,6 @@ package ch.ethz.geco.gecko;
 
 import ch.ethz.geco.gecko.rest.RequestBuilder;
 import ch.ethz.geco.gecko.rest.api.exception.APIException;
-import com.fasterxml.jackson.databind.deser.DataFormatReaders;
 import org.apache.commons.collections4.bidimap.DualHashBidiMap;
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
@@ -43,6 +42,7 @@ import java.util.regex.Pattern;
  * See {@link ch.ethz.geco.gecko.rest.WebHookServer} for details.
  */
 public class MediaSynchronizer {
+    private static final String API_URL = "https://geco.ethz.ch";
     private static final IChannel newsChannel = GECkO.discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("media_newsChannelID")));
     private static final IChannel eventChannel = GECkO.discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("media_eventChannelID")));
 
@@ -57,7 +57,7 @@ public class MediaSynchronizer {
      */
     public static void loadNews() {
         try {
-            HttpResponse response = new RequestBuilder("https://geco.ethz.ch/api/v2/web/news")
+            HttpResponse response = new RequestBuilder(API_URL + "/api/v2/web/news")
                     .addHeader("X-API-KEY", ConfigManager.getProperties().getProperty("geco_apiKey"))
                     .get();
 
@@ -92,24 +92,32 @@ public class MediaSynchronizer {
 
                     // Sort and validate news history
                     newsHistory.sort(Comparator.comparing(message -> {
-                        IEmbed embed = message.getEmbeds().get(0);
+                        if (message.getEmbeds() != null && message.getEmbeds().size() > 0) {
+                            IEmbed embed = message.getEmbeds().get(0);
 
-                        if (embed != null) {
-                            Matcher idMatcher = idPattern.matcher(embed.getUrl());
+                            if (embed != null) {
+                                Matcher idMatcher = idPattern.matcher(embed.getUrl());
 
-                            if (idMatcher.find()) {
-                                int id = Integer.parseInt(idMatcher.group(1));
-                                newsPostMap.put(id, message);
-                                return id;
+                                if (idMatcher.find()) {
+                                    int id = Integer.parseInt(idMatcher.group(1));
+                                    newsPostMap.put(id, message);
+                                    return id;
+                                }
                             }
                         }
 
-                        // Remove message if something fails, we will repost missing messages later on.
-                        newsHistory.remove(message);
-                        message.delete();
+                        // If something fails, mark invalid messages to be removed
                         GECkO.logger.warn("Found invalid message in news channel!");
-                        return 0;
+                        return -1;
                     }));
+
+                    // Remove messages which are marked for deletion
+                    for (IMessage message : newsHistory) {
+                        if (newsPostMap.getKey(message) == -1) {
+                            newsHistory.remove(message);
+                            message.delete();
+                        }
+                    }
 
                     // Remove old news
                     for (IMessage newsPost : newsHistory) {
@@ -143,7 +151,8 @@ public class MediaSynchronizer {
                      *
                      */
 
-                    newsChannel.sendMessage(processImages(extendAuthorIconUrl(webEmbeds.get(8))));
+                    //processMarkdown(extendAuthorIconUrl(webEmbeds.get(8)));
+                    newsChannel.sendMessage(processMarkdown(extendAuthorIconUrl(webEmbeds.get(8))));
 
                     /*
                     for (int i = 0; i < webEmbeds.size(); i++) {
@@ -201,7 +210,7 @@ public class MediaSynchronizer {
      */
     public static void setNews(int id, EmbedObject message, boolean raw) {
         if (raw) {
-            message = processImages(message);
+            message = processMarkdown(message);
         }
 
         if (news.containsKey(id)) {
@@ -230,7 +239,7 @@ public class MediaSynchronizer {
      */
     public static void setEvent(int id, EmbedObject message, boolean raw) {
         if (raw) {
-            message = processImages(extendAuthorIconUrl(message));
+            message = processMarkdown(extendAuthorIconUrl(message));
         }
 
         // Set message color
@@ -278,41 +287,115 @@ public class MediaSynchronizer {
      * @return the embed with fixed icon url.
      */
     private static EmbedObject extendAuthorIconUrl(EmbedObject raw) {
-        raw.author.icon_url = "https://geco.ethz.ch" + raw.author.icon_url;
+        raw.author.icon_url = API_URL + raw.author.icon_url;
         return raw;
     }
 
     /**
-     * Removes all image tags from the description and adds the first image as the main image.
+     * Processes all the markdown stuff not supported by discord and tries to replace as good as possible.
      *
      * @param raw the embed with unprocessed description
-     * @return the embed with image tags removed and first image added as main image.
+     * @return the processed embed
      */
-    private static EmbedObject processImages(EmbedObject raw) {
-        Pattern youtubePattern = Pattern.compile("http(?:s?)://(?:www\\.)?youtu(?:be\\.com/watch\\?v=|\\.be/)[\\w\\-_]*(&(amp;)?\u200C\u200B[\\w?\u200C\u200B=]*)?");
+    private static EmbedObject processMarkdown(EmbedObject raw) {
+        /* Replacement Policy:
+         * 1. Find video and use it as msg video if found go to step 3.
+         * 2. Find image and use it as msg image.
+         * 3. Remove empty links
+         * 4. Replace all nested images with links (use image desc. as link name)
+         * 5. Remove all remaining images.
+         */
+
+        Pattern videoPattern = Pattern.compile("(?:https?://)?(?:www\\.)?youtu(?:be\\.com/watch\\?(?:.*?&(?:amp;)?)?v=|\\.be/)[\\w\\-]+(?:&(?:amp;)?[\\w?=]*)?");
+        Matcher videoMatcher = videoPattern.matcher(raw.description);
+
         Pattern imagePattern = Pattern.compile("!\\[[^]]*]\\(([^)]*)\\)");
-        Pattern nestedImagePattern = Pattern.compile("\\[!\\[([^]]*)]\\([^)]*\\)]\\(([^)]*)\\)");
         Matcher imageMatcher = imagePattern.matcher(raw.description);
 
-        // Find first image and use it as message image, remove all remaining images.
+        // First we'll search for a video
+        if (videoMatcher.find()) {
+            GECkO.logger.debug("Found YouTube video: " + videoMatcher.group());
+
+            EmbedObject.VideoObject videoObject = new EmbedObject.VideoObject();
+            videoObject.url = videoMatcher.group();
+            videoObject.height = 480;
+            videoObject.width = 480;
+            raw.video = videoObject;
+
+            // Remove the video
+            raw.description = videoMatcher.replaceFirst("");
+
+            EmbedObject test = new EmbedObject();
+            test.type = "rich";
+            test.video = videoObject;
+            newsChannel.sendMessage(test);
+        } else if (imageMatcher.find()) { // If we didn't find one, search for an image
+            EmbedObject.ImageObject imageObject = new EmbedObject.ImageObject();
+            imageObject.url = imageMatcher.group(1);
+            raw.image = imageObject;
+        }
+
+        // Replace all nested image links with normal ones
+        Pattern nestedPattern = Pattern.compile("\\[!\\[([^]]*)]\\([^)]*\\)]\\(([^)]*)\\)");
+        Matcher nestedMatcher = nestedPattern.matcher(raw.description);
+        raw.description = nestedMatcher.replaceAll("[$1]($2)");
+
+        // Remove remaining images
+        imageMatcher = imagePattern.matcher(raw.description);
+        raw.description = imageMatcher.replaceAll("");
+
+        // Cleanup
+        Pattern emptyLinkPattern = Pattern.compile("\\[[^]]*]\\(\\s*\\)");
+        Pattern emptyLinkNamePattern = Pattern.compile("\\[\\s*]\\(([^)]*)\\)");
+
+        // Remove empty links
+        raw.description = emptyLinkPattern.matcher(raw.description).replaceAll("");
+
+        // Fix links with no link name
+        raw.description = emptyLinkNamePattern.matcher(raw.description).replaceAll("$1");
+
+        /*
+        // First search for an image
         if (imageMatcher.find()) {
+            // Remember if we found a video later on
+            boolean foundVideo = false;
+
+            // If we found one, we'll search a nested image (one that is used as a link name)
             Matcher nestedMatcher = nestedImagePattern.matcher(raw.description);
             if (nestedMatcher.find()) {
-                Matcher youtubeMatcher = youtubePattern.matcher(nestedMatcher.group(2));
-                nestedMatcher.group(1);
+                String description = nestedMatcher.group(1);
+                String link = nestedMatcher.group(2);
 
-                //nestedMatcher.replaceFirst()
-            } else {
+                // If there is one, we'll check if it points to a video
+                Matcher youtubeMatcher = youtubePattern.matcher(link);
+                if (youtubeMatcher.find()) {
+                    foundVideo = true;
+
+                    // Remove that nested link
+                    nestedMatcher.replaceFirst("");
+
+                    // Set YouTube link as message video
+                    EmbedObject.VideoObject videoObject = new EmbedObject.VideoObject();
+                    videoObject.url = link;
+                    raw.video = videoObject;
+                }
+
+                // Replace all remaining nested image links with normal links, using the image description as link name.
+                nestedMatcher.replaceAll("[" + description + "](" + link + ")");
+            }
+
+            // If we haven't found a video, use the first image as the message image.
+            if (!foundVideo) {
                 String imageURL = imageMatcher.group(1);
 
                 EmbedObject.ImageObject imageObject = new EmbedObject.ImageObject();
                 imageObject.url = imageURL;
                 raw.image = imageObject;
-
-                // Remove all image tags
-                raw.description = raw.description.replaceAll("!\\[[^]]*]\\([^)]*\\)", "");
             }
-        }
+
+            // Remove all remaining image tags since we can only have one image in a discord message. :(
+            imageMatcher.replaceAll("");
+        }*/
 
         return raw;
     }

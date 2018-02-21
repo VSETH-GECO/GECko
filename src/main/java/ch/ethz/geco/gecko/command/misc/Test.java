@@ -19,12 +19,15 @@
 
 package ch.ethz.geco.gecko.command.misc;
 
+import ch.ethz.geco.gecko.GECkO;
 import ch.ethz.geco.gecko.MediaSynchronizer;
 import ch.ethz.geco.gecko.command.Command;
 import ch.ethz.geco.gecko.command.CommandUtils;
 import ch.ethz.geco.gecko.rest.api.GecoAPI;
 import sun.misc.MessageUtils;
+import sx.blah.discord.api.internal.json.objects.EmbedObject;
 import sx.blah.discord.handle.obj.IMessage;
+import sx.blah.discord.util.MessageBuilder;
 import sx.blah.discord.util.MessageHistory;
 
 import java.util.List;
@@ -36,6 +39,16 @@ public class Test extends Command {
 
     @Override
     public void execute(IMessage msg, List<String> args) {
-        MediaSynchronizer.loadNews();
+        //MediaSynchronizer.loadNews();
+
+        EmbedObject.VideoObject videoObject = new EmbedObject.VideoObject();
+        videoObject.url = "https://www.youtube.com/watch?v=64xUcPqe2jM";
+
+        EmbedObject test = new EmbedObject();
+        test.type = "video";
+        test.video = videoObject;
+
+        MessageBuilder messageBuilder = new MessageBuilder(GECkO.discordClient);
+        messageBuilder.withEmbed(test).withChannel(GECkO.mainChannel).build();
     }
 }

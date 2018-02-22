@@ -20,15 +20,9 @@
 package ch.ethz.geco.gecko.command.misc;
 
 import ch.ethz.geco.gecko.GECkO;
-import ch.ethz.geco.gecko.MediaSynchronizer;
 import ch.ethz.geco.gecko.command.Command;
-import ch.ethz.geco.gecko.command.CommandUtils;
-import ch.ethz.geco.gecko.rest.api.GecoAPI;
-import sun.misc.MessageUtils;
-import sx.blah.discord.api.internal.json.objects.EmbedObject;
 import sx.blah.discord.handle.obj.IMessage;
-import sx.blah.discord.util.MessageBuilder;
-import sx.blah.discord.util.MessageHistory;
+import sx.blah.discord.util.EmbedBuilder;
 
 import java.util.List;
 
@@ -39,16 +33,26 @@ public class Test extends Command {
 
     @Override
     public void execute(IMessage msg, List<String> args) {
-        //MediaSynchronizer.loadNews();
+        EmbedBuilder embedBuilder = new EmbedBuilder();
+        embedBuilder.withDescription("**bold**\n" +
+                "*italics*\n" +
+                "~~strikethrough~~\n" +
+                "# Big header\n" +
+                "## Medium header\n" +
+                "### Small header\n" +
+                "#### Tiny header\n" +
+                "* Generic list item\n" +
+                "* Generic list item\n" +
+                "* Generic list item\n" +
+                "\n" +
+                "1. Numbered list item\n" +
+                "2. Numbered list item\n" +
+                "3. Numbered list item\n" +
+                "[Text to display](http://www.example.com)\n" +
+                "> This is a quote.\n" +
+                "> It can span multiple lines!\n" +
+                "```Java\npublic void bla(){}```");
 
-        EmbedObject.VideoObject videoObject = new EmbedObject.VideoObject();
-        videoObject.url = "https://www.youtube.com/watch?v=64xUcPqe2jM";
-
-        EmbedObject test = new EmbedObject();
-        test.type = "video";
-        test.video = videoObject;
-
-        MessageBuilder messageBuilder = new MessageBuilder(GECkO.discordClient);
-        messageBuilder.withEmbed(test).withChannel(GECkO.mainChannel).build();
+        GECkO.mainChannel.sendMessage(embedBuilder.build());
     }
 }

@@ -71,7 +71,7 @@ public class MediaSynchronizer {
                     List<EmbedObject> webEmbeds = DiscordUtils.MAPPER.readValue(response.getEntity().getContent(), DiscordUtils.MAPPER.getTypeFactory().constructCollectionType(List.class, EmbedObject.class));
                     DualHashBidiMap<Integer, EmbedObject> webEmbedMap = new DualHashBidiMap<>();
 
-                    MessageHistory newsHistory = newsChannel.getMessageHistory(10);
+                        MessageHistory newsHistory = newsChannel.getMessageHistory(20);
                     DualHashBidiMap<Integer, IMessage> newsPostMap = new DualHashBidiMap<>();
 
                     // Sort embeds by news ID or remove them if they don't have a news ID
@@ -292,44 +292,45 @@ public class MediaSynchronizer {
     }
 
     /**
-     * Processes all the markdown stuff not supported by discord and tries to replace as good as possible.
+     * Processes all the markdown stuff not supported by discord and tries to replace it as good as possible.
      *
      * @param raw the embed with unprocessed description
      * @return the processed embed
      */
     private static EmbedObject processMarkdown(EmbedObject raw) {
-        /* Replacement Policy:
-         * 1. Find video and use it as msg video if found go to step 3.
-         * 2. Find image and use it as msg image.
-         * 3. Remove empty links
-         * 4. Replace all nested images with links (use image desc. as link name)
-         * 5. Remove all remaining images.
+        /* Markdown Processing:
+         * - Emphasis:  supported
+         * ->Header:    not supported and has to be parsed
+         * - List:      not supported but left as is
+         * - Link:      supported
+         * - Quote:     not supported but left as is
+         * ->Image:     not supported and has to be removed
+         * - Table:     not supported but left as is
+         *              TODO: could be done as ASCII version inside a code block
+         * - Code:      supported
+         *
+         * Extension:
+         * ->Text Highlighting: not supported and has to be parsed
+         * - Horizontal Line:   not supported but left as is
+         *                      TODO: could be done as empty code block?
+         * ->Icon:              not supported and has to be removed
+         * ->IFrame:            not supported but has to be parsed
          */
 
-        Pattern videoPattern = Pattern.compile("(?:https?://)?(?:www\\.)?youtu(?:be\\.com/watch\\?(?:.*?&(?:amp;)?)?v=|\\.be/)[\\w\\-]+(?:&(?:amp;)?[\\w?=]*)?");
-        Matcher videoMatcher = videoPattern.matcher(raw.description);
+        /* Header Parsing:
+         * #      -> **_H1_**
+         * ##     -> __H2__
+         * ###    -> __H3__
+         * ####   -> __H4__
+         * #####  -> __H5__
+         * ###### -> __H6__
+         */
 
         Pattern imagePattern = Pattern.compile("!\\[[^]]*]\\(([^)]*)\\)");
         Matcher imageMatcher = imagePattern.matcher(raw.description);
 
-        // First we'll search for a video
-        if (videoMatcher.find()) {
-            GECkO.logger.debug("Found YouTube video: " + videoMatcher.group());
-
-            EmbedObject.VideoObject videoObject = new EmbedObject.VideoObject();
-            videoObject.url = videoMatcher.group();
-            videoObject.height = 480;
-            videoObject.width = 480;
-            raw.video = videoObject;
-
-            // Remove the video
-            raw.description = videoMatcher.replaceFirst("");
-
-            EmbedObject test = new EmbedObject();
-            test.type = "rich";
-            test.video = videoObject;
-            newsChannel.sendMessage(test);
-        } else if (imageMatcher.find()) { // If we didn't find one, search for an image
+        // Search for an image to use as message image
+        if (imageMatcher.find()) {
             EmbedObject.ImageObject imageObject = new EmbedObject.ImageObject();
             imageObject.url = imageMatcher.group(1);
             raw.image = imageObject;
@@ -353,49 +354,6 @@ public class MediaSynchronizer {
 
         // Fix links with no link name
         raw.description = emptyLinkNamePattern.matcher(raw.description).replaceAll("$1");
-
-        /*
-        // First search for an image
-        if (imageMatcher.find()) {
-            // Remember if we found a video later on
-            boolean foundVideo = false;
-
-            // If we found one, we'll search a nested image (one that is used as a link name)
-            Matcher nestedMatcher = nestedImagePattern.matcher(raw.description);
-            if (nestedMatcher.find()) {
-                String description = nestedMatcher.group(1);
-                String link = nestedMatcher.group(2);
-
-                // If there is one, we'll check if it points to a video
-                Matcher youtubeMatcher = youtubePattern.matcher(link);
-                if (youtubeMatcher.find()) {
-                    foundVideo = true;
-
-                    // Remove that nested link
-                    nestedMatcher.replaceFirst("");
-
-                    // Set YouTube link as message video
-                    EmbedObject.VideoObject videoObject = new EmbedObject.VideoObject();
-                    videoObject.url = link;
-                    raw.video = videoObject;
-                }
-
-                // Replace all remaining nested image links with normal links, using the image description as link name.
-                nestedMatcher.replaceAll("[" + description + "](" + link + ")");
-            }
-
-            // If we haven't found a video, use the first image as the message image.
-            if (!foundVideo) {
-                String imageURL = imageMatcher.group(1);
-
-                EmbedObject.ImageObject imageObject = new EmbedObject.ImageObject();
-                imageObject.url = imageURL;
-                raw.image = imageObject;
-            }
-
-            // Remove all remaining image tags since we can only have one image in a discord message. :(
-            imageMatcher.replaceAll("");
-        }*/
 
         return raw;
     }

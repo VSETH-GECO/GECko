@@ -1,0 +1,26 @@
+{
+  "Games": {
+    "Overwatch": [
+      "Château Guillard",
+      "Dorado",
+      "Eichenwalde",
+      "Hanamura",
+      "Hollywood",
+      "Horizon Lunar Colony",
+      "Ilios",
+      "King's Row",
+      "Lijiang Tower",
+      "Nepal",
+      "Numbani",
+      "Oasis",
+      "Route 66",
+      "Temple of Anubis",
+      "Volskaya Industries",
+      "Watchpoint: Gibraltar"
+    ],
+    "CS:GO": [
+      "Map 1",
+      "Map 2"
+    ]
+  }
+}

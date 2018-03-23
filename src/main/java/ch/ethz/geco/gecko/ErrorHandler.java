@@ -68,12 +68,12 @@ public class ErrorHandler {
 
             StackTraceElement[] stackTraceElements = e.getStackTrace();
 
-            List<StackTraceElement> stammbotTrace = new ArrayList<>();
+            List<StackTraceElement> botTrace = new ArrayList<>();
             List<StackTraceElement> discordTrace = new ArrayList<>();
             List<StackTraceElement> javaTrace = new ArrayList<>();
             for (StackTraceElement stackTraceElement : stackTraceElements) {
                 if (stackTraceElement.getClassName().startsWith("ch.ethz.geco.gecko")) {
-                    stammbotTrace.add(stackTraceElement);
+                    botTrace.add(stackTraceElement);
                 } else if (stackTraceElement.getClassName().startsWith("sx.blah.")) {
                     discordTrace.add(stackTraceElement);
                 } else {
@@ -84,8 +84,8 @@ public class ErrorHandler {
             StringBuilder builder = new StringBuilder();
 
             List<StackTraceElement> listToUse;
-            if (stammbotTrace.size() > 0) {
-                listToUse = stammbotTrace;
+            if (botTrace.size() > 0) {
+                listToUse = botTrace;
             } else if (discordTrace.size() > 0) {
                 listToUse = discordTrace;
             } else {

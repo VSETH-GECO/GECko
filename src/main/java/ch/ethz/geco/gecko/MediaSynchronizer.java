@@ -29,8 +29,7 @@ import sx.blah.discord.api.internal.json.objects.EmbedObject;
 import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IEmbed;
 import sx.blah.discord.handle.obj.IMessage;
-import sx.blah.discord.util.EmbedBuilder;
-import sx.blah.discord.util.MessageHistory;
+import sx.blah.discord.util.RequestBuffer;
 
 import java.io.IOException;
 import java.util.*;
@@ -46,8 +45,8 @@ public class MediaSynchronizer {
     private static final IChannel newsChannel = GECkO.discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("media_newsChannelID")));
     private static final IChannel eventChannel = GECkO.discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("media_eventChannelID")));
 
-    private static final LinkedHashMap<Integer, IMessage> news = new LinkedHashMap<>();
-    private static final LinkedHashMap<Integer, IMessage> events = new LinkedHashMap<>();
+    private static final Map<Integer, IMessage> news = new HashMap<>();
+    private static final Map<Integer, IMessage> events = new HashMap<>();
 
     private static final Pattern idPattern = Pattern.compile("/(\\d+)/?");
 
@@ -71,9 +70,6 @@ public class MediaSynchronizer {
                     List<EmbedObject> webEmbeds = DiscordUtils.MAPPER.readValue(response.getEntity().getContent(), DiscordUtils.MAPPER.getTypeFactory().constructCollectionType(List.class, EmbedObject.class));
                     DualHashBidiMap<Integer, EmbedObject> webEmbedMap = new DualHashBidiMap<>();
 
-                        MessageHistory newsHistory = newsChannel.getMessageHistory(20);
-                    DualHashBidiMap<Integer, IMessage> newsPostMap = new DualHashBidiMap<>();
-
                     // Sort embeds by news ID or remove them if they don't have a news ID
                     webEmbeds.sort(Comparator.comparing(embedObject -> {
                         Matcher idMatcher = idPattern.matcher(embedObject.url);
@@ -83,102 +79,93 @@ public class MediaSynchronizer {
                             webEmbedMap.put(id, embedObject);
                             return id;
                         } else {
-                            // Remove embed if it has an invalid ID
-                            webEmbeds.remove(embedObject);
+                            // Don't add elements without IDs
                             GECkO.logger.warn("Received news post without ID. Contact the Web Master!");
                             return 0;
                         }
                     }));
 
-                    // Sort and validate news history
-                    newsHistory.sort(Comparator.comparing(message -> {
+                    // Remove all embeds which don't have an ID
+                    webEmbeds.removeIf(embedObject -> !webEmbedMap.containsValue(embedObject));
+
+                    // Get the last 20 messages
+                    List<IMessage> newsHistory = newsChannel.getMessageHistory(20);
+                    GECkO.logger.debug("Found {} messages in the news channel.", newsHistory.size());
+
+                    // Load existing news posts
+                    GECkO.logger.debug("Loading existing news posts...");
+                    for (IMessage message : newsHistory) {
                         if (message.getEmbeds() != null && message.getEmbeds().size() > 0) {
                             IEmbed embed = message.getEmbeds().get(0);
+                            Matcher idMatcher = idPattern.matcher(embed.getUrl());
 
-                            if (embed != null) {
-                                Matcher idMatcher = idPattern.matcher(embed.getUrl());
+                            if (idMatcher.find()) {
+                                int id = Integer.parseInt(idMatcher.group(1));
 
-                                if (idMatcher.find()) {
-                                    int id = Integer.parseInt(idMatcher.group(1));
-                                    newsPostMap.put(id, message);
-                                    return id;
-                                }
-                            }
-                        }
-
-                        // If something fails, mark invalid messages to be removed
-                        GECkO.logger.warn("Found invalid message in news channel!");
-                        return -1;
-                    }));
-
-                    // Remove messages which are marked for deletion
-                    for (IMessage message : newsHistory) {
-                        if (newsPostMap.getKey(message) == -1) {
-                            newsHistory.remove(message);
-                            message.delete();
-                        }
-                    }
-
-                    // Remove old news
-                    for (IMessage newsPost : newsHistory) {
-                        Integer newsID = newsPostMap.getKey(newsPost);
-
-                        if (!webEmbedMap.containsKey(newsID)) {
-                            newsHistory.remove(newsPost);
-                            newsPostMap.remove(newsID, newsPost);
-                            newsPost.delete();
-                        }
-                    }
-
-                    // At this point, all messages which were not in the API response should have been removed
-                    // and all remaining messages should have been sorted ascending by their web ID (not Discord ID!)
-
-                    // We will then iterate through the message list and the embed list we got from the REST API at the
-                    // same time. If an embed id matches a message id, we will verify the content of the message and modify
-                    // it, if there were changes. If the embed id is not equal to the message id, we will override the
-                    // current message with the current embed. When were out of messages but there are still embeds left,
-                    // we will simply post new messages. Example:
-
-                    /*
-                     * Scenario:
-                     * Embed ID (Web) | Message ID    | Operation | Result ID
-                     *
-                     * 8              | 8             | 8  (check and edit)
-                     * 9              | 12            | 9  (override)
-                     * 10             | x             | 10 (post)
-                     * 11             | x             | 11 (post)
-                     * 12             | x             | 12 (post)
-                     *
-                     */
-
-                    //processMarkdown(extendAuthorIconUrl(webEmbeds.get(8)));
-                    newsChannel.sendMessage(processMarkdown(extendAuthorIconUrl(webEmbeds.get(8))));
-
-                    /*
-                    for (int i = 0; i < webEmbeds.size(); i++) {
-                        EmbedObject webEmbed = webEmbeds.get(i);
-                        int webID = webEmbedMap.getKey(webEmbed);
-
-                        // If we have more embeds than messages in the news history, post new messages
-                        if (i >= newsHistory.size()) {
-                            setNews(webID, webEmbed);
-                        } else { // Otherwise, either replace or validate the news history
-                            IMessage localNews = newsHistory.get(i);
-                            int localID = newsPostMap.getKey(localNews);
-
-                            // If local and web embed have the same news ID, validate and update local content
-                            if (webID == localID) {
-                                if (!embedEqualsEmbedObject(localNews.getEmbeds().get(0), webEmbed)) {
-                                    news.put(webID, localNews.edit(webEmbed));
+                                if (webEmbedMap.containsKey(id)) {
+                                    news.put(id, message);
+                                    continue;
                                 } else {
-                                    GECkO.logger.debug("Local news post " + webID + " is up-to-date.");
+                                    GECkO.logger.debug("Removing news post without corresponding web embed");
                                 }
-                            } else { // Otherwise override local embed with web embed
-                                news.put(webID, localNews.edit(webEmbed));
+                            } else {
+                                GECkO.logger.debug("Removing message without ID.");
+                            }
+                        } else {
+                            GECkO.logger.debug("Removing message without embed.");
+                        }
+
+                        // Delete message of news post if it doesn't have an ID or no corresponding web embed
+                        message.delete();
+                    }
+                    GECkO.logger.debug("Loaded {} existing news posts.", news.size());
+
+                    // Checking for missing news posts and update existing ones
+                    int firstMissing = -1;
+                    int lastFound = -1;
+                    for (EmbedObject embedObject : webEmbeds) {
+                        // If there is already a news post corresponding to the current web embed
+                        int curID = webEmbedMap.getKey(embedObject);
+
+                        IMessage newsMessage = news.get(curID);
+                        if (newsMessage != null) {
+                            lastFound = curID;
+
+                            final EmbedObject processedEmbed = processMarkdown(extendAuthorIconUrl(embedObject));
+                            if (!embedEqualsEmbedObject(newsMessage.getEmbeds().get(0), processedEmbed)) {
+                                GECkO.logger.debug("Updating news post: {}", curID);
+                                RequestBuffer.request(() -> {
+                                    newsMessage.edit(processedEmbed);
+                                }).get();
+                            } else {
+                                GECkO.logger.debug("News post {} is up-to-date.", curID);
+                            }
+                        } else {
+                            if (firstMissing == -1) {
+                                firstMissing = curID;
                             }
                         }
-                    }*/
+                    }
 
+                    // Fix missing posts
+                    for (EmbedObject embedObject : webEmbeds) {
+                        int curID = webEmbedMap.getKey(embedObject);
+
+                        // If it's not already in the news channel
+                        if (!news.containsKey(curID)) {
+                            // If the missing post is before already existing posts, we can't post it since we
+                            // can't post messages before other messages.
+                            if (lastFound > curID) {
+                                GECkO.logger.warn("Missing news post {} in between. Can't fix without breaking reactions. Ignoring.", curID);
+                            } else {
+                                GECkO.logger.debug("Posting missing news post with ID: {}", curID);
+                                final EmbedObject processedEmbed = processMarkdown(extendAuthorIconUrl(embedObject));
+                                RequestBuffer.request(() -> {
+                                    newsChannel.sendMessage(processedEmbed);
+                                }).get();
+                            }
+                        }
+                    }
                     break;
                 case 400: // Bad Request
                     ErrorHandler.handleError(new APIException("Bad Request"));
@@ -210,14 +197,18 @@ public class MediaSynchronizer {
      */
     public static void setNews(int id, EmbedObject message, boolean raw) {
         if (raw) {
-            message = processMarkdown(message);
+            message = processMarkdown(extendAuthorIconUrl(message));
         }
 
-        if (news.containsKey(id)) {
-            news.get(id).edit(message);
-        } else {
-            news.put(id, newsChannel.sendMessage(message));
-        }
+        final EmbedObject finalMsg = message;
+
+        RequestBuffer.request(() -> {
+            if (news.containsKey(id)) {
+                news.get(id).edit(finalMsg);
+            } else {
+                news.put(id, newsChannel.sendMessage(finalMsg));
+            }
+        }).get();
     }
 
     /**
@@ -291,13 +282,23 @@ public class MediaSynchronizer {
         return raw;
     }
 
+    // Pre-compile all needed patterns
+    private static final Pattern headerPattern = Pattern.compile("(#+)\\s*([^\\r\\n]+)(?>\\r\\n|\\r|\\n|$)");
+    private static final Pattern imagePattern = Pattern.compile("!\\[[^]]*]\\(([^)]*)\\)");
+    private static final Pattern nestedPattern = Pattern.compile("\\[!\\[([^]]*)]\\([^)]*\\)]\\(([^)]*)\\)");
+    private static final Pattern emptyLinkPattern = Pattern.compile("\\[[^]]*]\\(\\s*\\)");
+    private static final Pattern emptyLinkNamePattern = Pattern.compile("\\[\\s*]\\(([^)]*)\\)");
+    private static final Pattern iconPattern = Pattern.compile("\\{\\{[^}]+}}");
+    private static final Pattern iframePattern = Pattern.compile("\\{iframe}\\(([^)]*)\\)");
+    private static final Pattern youtubePattern = Pattern.compile("https?://(?:www\\.)?youtu(?:be\\.com/watch\\?v=|\\.be/)([\\w\\-_]{1,11})");
+
     /**
      * Processes all the markdown stuff not supported by discord and tries to replace it as good as possible.
      *
      * @param raw the embed with unprocessed description
      * @return the processed embed
      */
-    private static EmbedObject processMarkdown(EmbedObject raw) {
+    public static EmbedObject processMarkdown(EmbedObject raw) {
         /* Markdown Processing:
          * - Emphasis:  supported
          * ->Header:    not supported and has to be parsed
@@ -317,8 +318,10 @@ public class MediaSynchronizer {
          * ->IFrame:            not supported but has to be parsed
          */
 
+        String description = raw.description;
+
         /* Header Parsing:
-         * #      -> **_H1_**
+         * #      -> **__H1__**
          * ##     -> __H2__
          * ###    -> __H3__
          * ####   -> __H4__
@@ -326,8 +329,30 @@ public class MediaSynchronizer {
          * ###### -> __H6__
          */
 
-        Pattern imagePattern = Pattern.compile("!\\[[^]]*]\\(([^)]*)\\)");
-        Matcher imageMatcher = imagePattern.matcher(raw.description);
+        Matcher headerMatcher = headerPattern.matcher(description);
+
+        while (headerMatcher.find()) {
+            int heading = headerMatcher.group(1).length();
+
+            if (heading == 1) {
+                description = headerMatcher.replaceFirst("**__$2__**\n");
+            } else {
+                description = headerMatcher.replaceFirst("__$2__\n");
+            }
+
+            // Reset matcher
+            headerMatcher = headerPattern.matcher(description);
+        }
+
+        /* (Nested) Image Parsing:
+         * 1. Search for an image to use as message image
+         * 2. Resolve all nested image links
+         * 2.1 By using the image description as the link name instead of the image
+         * 3. Remove all remaining images TODO: Maybe post them as links?
+         * 4. Fix broken links
+         */
+
+        Matcher imageMatcher = imagePattern.matcher(description);
 
         // Search for an image to use as message image
         if (imageMatcher.find()) {
@@ -337,49 +362,80 @@ public class MediaSynchronizer {
         }
 
         // Replace all nested image links with normal ones
-        Pattern nestedPattern = Pattern.compile("\\[!\\[([^]]*)]\\([^)]*\\)]\\(([^)]*)\\)");
-        Matcher nestedMatcher = nestedPattern.matcher(raw.description);
-        raw.description = nestedMatcher.replaceAll("[$1]($2)");
+
+        Matcher nestedMatcher = nestedPattern.matcher(description);
+        description = nestedMatcher.replaceAll("[$1]($2)");
 
         // Remove remaining images
-        imageMatcher = imagePattern.matcher(raw.description);
-        raw.description = imageMatcher.replaceAll("");
-
-        // Cleanup
-        Pattern emptyLinkPattern = Pattern.compile("\\[[^]]*]\\(\\s*\\)");
-        Pattern emptyLinkNamePattern = Pattern.compile("\\[\\s*]\\(([^)]*)\\)");
+        imageMatcher = imagePattern.matcher(description);
+        description = imageMatcher.replaceAll("");
 
         // Remove empty links
-        raw.description = emptyLinkPattern.matcher(raw.description).replaceAll("");
+        description = emptyLinkPattern.matcher(description).replaceAll("");
 
         // Fix links with no link name
-        raw.description = emptyLinkNamePattern.matcher(raw.description).replaceAll("$1");
+        description = emptyLinkNamePattern.matcher(description).replaceAll("$1");
 
+        /* Text Highlighting Parsing:
+         * 1. "Simply" replace with bold
+         *
+         * Since we can't exclude words from matching ("==([^(==)]*)==" does not work), we will implement
+         * our own matching algorithm.
+         */
+
+        char lastChar = '\0';
+        int quoteBegin = -1;
+        for (int i = 0; i < description.length(); i++) {
+            char curChar = description.charAt(i);
+            // If we found a potential start or end
+            if (curChar == '=' && lastChar == '=') {
+                // Check if quote begin is already set
+                if (quoteBegin == -1) {
+                    quoteBegin = i - 1;
+                } else { // If not, it must be a quote end
+                    int quoteEnd = i + 1;
+                    String quote = description.substring(quoteBegin, quoteEnd);
+
+                    // Replace highlight with bold
+                    description = description.substring(0, quoteBegin) + "**" + description.substring(quoteBegin + 2, quoteEnd - 2) + "**" + description.substring(quoteEnd);
+                    quoteBegin = -1; // Reset quote begin
+                }
+            }
+
+            lastChar = curChar;
+        }
+
+        /* Icon parsing:
+         * Icons will be removed until a better solution has been found TODO: emojis?
+         */
+
+        Matcher iconMatcher = iconPattern.matcher(description);
+        description = iconMatcher.replaceAll("");
+
+        /* IFrame parsing:
+         * - Change YouTube IFrame to link
+         * - Parse Google Maps IFrame to link
+         */
+
+        Matcher iFrameMatcher = iframePattern.matcher(description);
+        while (iFrameMatcher.find()) {
+            if (iFrameMatcher.group(1).length() == 0) {
+                description = iFrameMatcher.replaceFirst("");
+            } else {
+                Matcher youtubeMatcher = youtubePattern.matcher(iFrameMatcher.group());
+                if (youtubeMatcher.find()) {
+                    description = iFrameMatcher.replaceFirst("[Video](" + youtubeMatcher.group() + ")");
+                } else {
+                    // TODO: also parse google maps
+                    description = iFrameMatcher.replaceFirst("");
+                }
+            }
+
+            iFrameMatcher = iframePattern.matcher(description);
+        }
+
+        raw.description = description.trim();
         return raw;
-    }
-
-    /**
-     * Converts an IEmbed to an EmbedObject. But only converts fields relevant to news or event posts.
-     *
-     * @param embed the IEmbed to convert
-     * @return the corresponding EmbedObject
-     */
-    private static EmbedObject embedToObject(IEmbed embed) {
-        EmbedBuilder embedBuilder = new EmbedBuilder().withTitle(embed.getTitle())
-                .withDescription(embed.getDescription())
-                .withUrl(embed.getUrl());
-
-        if (embed.getAuthor() != null) {
-            embedBuilder.withAuthorName(embed.getAuthor().getName())
-                    .withAuthorIcon(embed.getAuthor().getIconUrl())
-                    .withAuthorUrl(embed.getAuthor().getUrl());
-        }
-
-        if (embed.getFooter() != null) {
-            embedBuilder.withFooterText(embed.getFooter().getText());
-        }
-
-        return embedBuilder.build();
     }
 
     /**
@@ -390,12 +446,74 @@ public class MediaSynchronizer {
      * @return if the two embeds are equal
      */
     private static boolean embedEqualsEmbedObject(IEmbed e1, EmbedObject e2) {
-        return e1.getAuthor().getIconUrl().equals(e2.author.icon_url) &&
-                e1.getAuthor().getName().equals(e2.author.name) &&
-                e1.getAuthor().getUrl().equals(e2.author.url) &&
-                e1.getTitle().equals(e2.title) &&
-                e1.getUrl().equals(e2.url) &&
-                e1.getDescription().equals(e2.description) &&
-                e1.getFooter().getText().equals(e2.footer.text);
+        IEmbed.IEmbedAuthor author1 = e1.getAuthor();
+        EmbedObject.AuthorObject author2 = e2.author;
+        if ((author1 == null) == (author2 == null)) {
+            if (author1 != null) {
+                if (!Objects.equals(author1.getIconUrl(), author2.icon_url)) {
+                    GECkO.logger.debug("Author icon URL has changed.");
+                    return false;
+                }
+
+                if (!Objects.equals(author1.getName(), author2.name)) {
+                    GECkO.logger.debug("Author name has changed.");
+                    return false;
+                }
+
+                if (!Objects.equals(author1.getUrl(), author2.url)) {
+                    GECkO.logger.debug("Author URL has changed.");
+                    return false;
+                }
+            }
+        } else {
+            return false;
+        }
+
+        if (!Objects.equals(e1.getTitle(), e2.title)) {
+            GECkO.logger.debug("Title has changed.");
+            return false;
+        }
+
+        if (!Objects.equals(e1.getUrl(), e2.url)) {
+            GECkO.logger.debug("URL has changed.");
+            return false;
+        }
+
+        if (!Objects.equals(e1.getDescription(), e2.description)) {
+            if (!(e1.getDescription() == null && Objects.equals(e2.description, ""))) {
+                GECkO.logger.debug("Description has changed.");
+                GECkO.logger.debug("Before: {}", e1.getDescription());
+                GECkO.logger.debug("After: {}", e2.description);
+                return false;
+            }
+        }
+
+        IEmbed.IEmbedFooter footer1 = e1.getFooter();
+        EmbedObject.FooterObject footer2 = e2.footer;
+        if ((footer1 == null) == (footer2 == null)) {
+            if (footer1 != null) {
+                if (!Objects.equals(footer1.getText(), footer2.text)) {
+                    GECkO.logger.debug("Footer text has changed.");
+                    return false;
+                }
+            }
+        } else {
+            return false;
+        }
+
+        IEmbed.IEmbedImage image1 = e1.getImage();
+        EmbedObject.ImageObject image2 = e2.image;
+        if ((image1 == null) == (image2 == null)) {
+            if (image1 != null) {
+                if (!Objects.equals(image1.getUrl(), image2.url)) {
+                    GECkO.logger.debug("Image URL has changed.");
+                    return false;
+                }
+            }
+        } else {
+            return false;
+        }
+
+        return true;
     }
 }

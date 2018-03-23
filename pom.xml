@@ -112,7 +112,7 @@
         <dependency>
             <groupId>com.github.austinv11</groupId>
             <artifactId>Discord4J</artifactId>
-            <version>ee46f68d1ba59cbf8ba3cf96ec019859b12e302f</version>
+            <version>2.10.0</version>
         </dependency>
 
         <dependency>
@@ -121,10 +121,11 @@
             <version>1.2.3</version>
         </dependency>
 
+        <!-- Maven and JGit used for the self-update process -->
         <dependency>
             <groupId>org.eclipse.jgit</groupId>
             <artifactId>org.eclipse.jgit</artifactId>
-            <version>4.9.0.201710071750-r</version>
+            <version>4.10.0.201712302008-r</version>
         </dependency>
 
         <dependency>
@@ -133,24 +134,34 @@
             <version>3.0.0</version>
         </dependency>
 
+        <!-- JetBrains annotations for better control flow analysis -->
         <dependency>
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>
             <version>RELEASE</version>
         </dependency>
 
+        <!-- Small HTTP server used for providing web hooks -->
         <dependency>
             <groupId>org.nanohttpd</groupId>
             <artifactId>nanohttpd</artifactId>
             <version>2.3.1</version>
         </dependency>
 
+        <!-- Apache libs -->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-collections4</artifactId>
             <version>4.1</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+            <version>1.2</version>
+        </dependency>
+
+        <!-- Sound libs used for Acapela API -->
         <dependency>
             <groupId>com.googlecode.soundlibs</groupId>
             <artifactId>mp3spi</artifactId>

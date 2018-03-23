@@ -21,9 +21,8 @@ package ch.ethz.geco.gecko.command;
 
 import ch.ethz.geco.gecko.ErrorHandler;
 import ch.ethz.geco.gecko.GECkO;
-import org.apache.commons.lang3.text.StrTokenizer;
+import org.apache.commons.text.StrTokenizer;
 import org.jetbrains.annotations.Contract;
-import org.jetbrains.annotations.NotNull;
 import sx.blah.discord.api.events.IListener;
 import sx.blah.discord.handle.impl.events.guild.channel.message.MessageReceivedEvent;
 import sx.blah.discord.handle.impl.obj.Embed;

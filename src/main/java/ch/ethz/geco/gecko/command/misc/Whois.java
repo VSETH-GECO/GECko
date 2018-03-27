@@ -21,7 +21,9 @@ package ch.ethz.geco.gecko.command.misc;
 
 import ch.ethz.geco.gecko.command.Command;
 import ch.ethz.geco.gecko.command.CommandUtils;
-import ch.ethz.geco.gecko.rest.api.GecoAPI;
+import ch.ethz.geco.gecko.rest.api.geco.GecoAPI;
+import ch.ethz.geco.gecko.rest.api.geco.UserInfo;
+import org.apache.commons.lang3.StringUtils;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
 
@@ -41,18 +43,24 @@ public class Whois extends Command {
             IUser user = msg.getMentions().get(0);
             String message;
             try {
-                GecoAPI.UserInfo userInfo = GecoAPI.getUserInfoByDiscordID(user.getLongID());
+                UserInfo userInfo = GecoAPI.getUserInfoByDiscordID(user.getLongID());
                 if (userInfo != null) {
-                    message = "**__User: " + user.getName() + "#" + user.getDiscriminator() + "__**\n**GECO:** <https://geco.ethz.ch/user/" + userInfo.getUserID() + ">";
+                    message = "**__User: " + user.getName() + "#" + user.getDiscriminator() + "__**\n**GECO:** <https://geco.ethz.ch/user/" + userInfo.getWebID() + ">";
 
-                    GecoAPI.UserInfo.Account steamAccount = userInfo.getAccountByType("steam");
+                    String steamAccount = userInfo.getAccount(UserInfo.AccountType.STEAM);
                     if (steamAccount != null) {
-                        message += "\n**Steam:** <http://steamcommunity.com/profiles/" + steamAccount.getID() + ">";
+                        message += "\n**Steam:** <http://steamcommunity.com/profiles/" + steamAccount + ">";
                     }
 
-                    GecoAPI.UserInfo.Account blizzardAccount = userInfo.getAccountByType("battlenet");
+                    String blizzardAccount = userInfo.getAccount(UserInfo.AccountType.BLIZZARD);
                     if (blizzardAccount != null) {
-                        message += "\n**Battle.net:** " + blizzardAccount.getID();
+                        message += "\n**Battle.net:** " + blizzardAccount;
+                    }
+
+                    if (GecoAPI.loadLanUser(userInfo)) {
+                        if (userInfo.getSeat() != null && !userInfo.getSeat().equals("")) {
+                            message += "\n**Seat:** " + userInfo.getSeat();
+                        }
                     }
                 } else {
                     message = "An internal error occurred.";

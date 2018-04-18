@@ -1,0 +1,40 @@
+{
+  "game": "Overwatch",
+  "bestOf": [1, 3, 5],
+  "maps": {
+    "Assault": [
+      "Hanamura",
+      "Horizon Lunar Colony",
+      "Temple of Anubis",
+      "Volskaya Industries"
+    ],
+    "Escort": [
+      "Dorado",
+      "Junkertown",
+      "Rialto",
+      "Route 66",
+      "Watchpoint: Gibraltar"
+    ],
+    "Assault Escort": [
+      "Blizzard World",
+      "Eichenwalde",
+      "Hollywood",
+      "King's Row",
+      "Numbani"
+    ],
+    "Control": [
+      "Ilios",
+      "Lijiang Tower",
+      "Nepal",
+      "Oasis"
+    ],
+    "Arena": [
+      "Ayutthaya",
+      "Black Forest",
+      "Castillo",
+      "Château Guillard",
+      "Ecopoint: Antarctica",
+      "Necropolis"
+    ]
+  }
+}

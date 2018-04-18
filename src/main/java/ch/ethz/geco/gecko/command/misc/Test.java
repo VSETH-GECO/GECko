@@ -19,9 +19,7 @@
 
 package ch.ethz.geco.gecko.command.misc;
 
-import ch.ethz.geco.gecko.MediaSynchronizer;
 import ch.ethz.geco.gecko.command.Command;
-import ch.ethz.geco.gecko.rest.api.geco.GecoAPI;
 import sx.blah.discord.handle.obj.IMessage;
 
 import java.util.List;

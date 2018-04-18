@@ -42,6 +42,6 @@ public class CommandBank {
 
         // Misc
         CommandRegistry.registerCommand(new Whois());
-        CommandRegistry.registerCommand(new Test());
+        //CommandRegistry.registerCommand(new Test());
     }
 }

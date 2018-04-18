@@ -21,6 +21,7 @@ package ch.ethz.geco.gecko.command.misc;
 
 import ch.ethz.geco.gecko.command.Command;
 import sx.blah.discord.handle.obj.IMessage;
+import sx.blah.discord.util.EmbedBuilder;
 
 import java.util.List;
 

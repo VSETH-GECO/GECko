@@ -19,37 +19,180 @@
 
 package ch.ethz.geco.gecko;
 
-import ch.ethz.geco.gecko.rest.RequestBuilder;
-import ch.ethz.geco.gecko.rest.api.exception.APIException;
-import org.apache.commons.collections4.bidimap.DualHashBidiMap;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.http.HttpResponse;
-import org.apache.http.StatusLine;
-import sx.blah.discord.api.internal.DiscordUtils;
+import ch.ethz.geco.g4j.impl.GECoClient;
+import ch.ethz.geco.g4j.obj.IEvent;
+import ch.ethz.geco.g4j.obj.IGECoClient;
+import ch.ethz.geco.g4j.obj.INews;
+import sx.blah.discord.api.ClientBuilder;
 import sx.blah.discord.api.internal.json.objects.EmbedObject;
 import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IEmbed;
 import sx.blah.discord.handle.obj.IMessage;
+import sx.blah.discord.util.MessageHistory;
 import sx.blah.discord.util.RequestBuffer;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+/*
+ * Implementation help:
+ *  - After restart
+ *      1)      Read existing entries and cleanup
+ *      1.1)    (Save into memory)
+ *  - Periodic checking and updating
+ *      1)      Load news from website (all or last page?)
+ *      2)      Read existing entries (maybe from memory if initial setup reads entries)
+ *      3)      Compare and edit entries
+ *  - Websocket support
+ *      - Support updating, deletion and creation
+ */
 
 /**
  * Synchronizes the news and events from the website with the corresponding channels. <p>
  * See {@link ch.ethz.geco.gecko.rest.WebHookServer} for details.
  */
 public class MediaSynchronizer {
-    private static final String API_URL = "https://geco.ethz.ch";
+    private static final String BASE_URL = "https://geco.ethz.ch";
     private static final IChannel newsChannel = GECkO.discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("media_newsChannelID")));
     private static final IChannel eventChannel = GECkO.discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("media_eventChannelID")));
 
-    private static final Map<Integer, IMessage> news = new HashMap<>();
-    private static final Map<Integer, IMessage> events = new HashMap<>();
+    private static final LinkedHashMap<Long, IMessage> news = new LinkedHashMap<>();
+    private static final LinkedHashMap<Long, IMessage> events = new LinkedHashMap<>();
 
-    private static final Pattern idPattern = Pattern.compile("/(\\d+)/?");
+    private static final Pattern idPattern = Pattern.compile("^\\s*https?://(?:www.)?geco.ethz.ch/(?:news|events)/(\\d+)/?\\s*$");
+
+    private static final IGECoClient gecoClient = new GECoClient(ConfigManager.getProperties().getProperty("geco_apiKey"));
+
+    private static EmbedObject getEmbedFromMedia(INews news) {
+        return new EmbedObject(news.getTitle(), "rich", news.getDescription(), news.getURL(), null,
+                0x7289DA, new EmbedObject.FooterObject(news.getFooter(), null, null),
+                null, null, null, null, new EmbedObject.AuthorObject(news.getAuthorName(),
+                news.getAuthorURL(), news.getAuthorIconURL(), null), null);
+    }
+
+    private static EmbedObject getEmbedFromMedia(IEvent event) {
+        return new EmbedObject(event.getTitle(), "rich", event.getDescription(), event.getURL(), null,
+                0x7289DA, null, null, null, null, null, null, null);
+    }
+
+    /**
+     * Gets the ID of a news or event post. If the given message does not contain a news
+     * or event post, this function will return null.
+     *
+     * @param message The message which possibly contains a news or event post.
+     * @return The ID of the news or event post, if existing.
+     */
+    private static Long getPostID(IMessage message) {
+        List<IEmbed> embeds = message.getEmbeds();
+
+        // A valid news or event entry has exactly one embed.
+        if (embeds == null || embeds.size() != 1) {
+            return null;
+        }
+
+        // Return if the url of the embed matches with the url of a news or event entry.
+        Matcher matcher = idPattern.matcher(embeds.get(0).getUrl());
+        if (matcher.matches()) {
+            return Long.valueOf(matcher.group(1));
+        }
+
+        return null;
+    }
+
+    /**
+     * Reads in all existing news and event entries and removes invalid entries.
+     */
+    private static void init() {
+        MessageHistory newsMessages = newsChannel.getMessageHistory(ClientBuilder.DEFAULT_MESSAGE_CACHE_LIMIT);
+        MessageHistory eventMessages = eventChannel.getMessageHistory(ClientBuilder.DEFAULT_MESSAGE_CACHE_LIMIT);
+
+        // Reinitialize ID to post mappings
+        MediaSynchronizer.news.clear();
+        newsMessages.stream().filter(message -> {
+            Long postID = getPostID(message);
+            // If a message has an ID, put it into the mapping
+            if (postID != null) {
+                MediaSynchronizer.news.put(postID, message);
+            }
+
+            return postID == null;
+            // Otherwise, delete it.
+        }).forEach(IMessage::delete);
+
+        MediaSynchronizer.events.clear();
+        eventMessages.stream().filter(message -> {
+            Long postID = getPostID(message);
+            // If a message has an ID, put it into the mapping
+            if (postID != null) {
+                MediaSynchronizer.events.put(postID, message);
+            }
+
+            return postID == null;
+            // Otherwise, delete it.
+        }).forEach(IMessage::delete);
+
+        GECkO.logger.info("Found {} local news and {} local event posts.", news.size(), events.size());
+    }
+
+    public static void loadMedia() {
+        // Re-read existing posts and cleanup
+        init();
+
+        List<INews> webNews = gecoClient.getNews(1);
+        if (webNews == null) {
+            return;
+        }
+
+        List<IEvent> webEvents = gecoClient.getEvents(1);
+        if (webEvents == null) {
+            return;
+        }
+
+        GECkO.logger.debug("Found {} remote news and {} remote event posts.", webNews.size(), webEvents.size());
+
+        // Revert news since we need them in ascending order.
+        Collections.reverse(webNews);
+
+        // Removes all draft news
+        webNews.removeIf(INews::isDraft);
+
+        int webIndex = 0;
+        Iterator<INews> webIterator = webNews.iterator();
+        Iterator<Map.Entry<Long, IMessage>> localIterator = news.entrySet().iterator();
+        while (webIterator.hasNext()) {
+            INews nextWeb = webIterator.next();
+
+            // If there are no more local posts, but there are still web posts missing.
+            if (!localIterator.hasNext()) {
+                newsChannel.sendMessage(processMarkdown(extendAuthorIconUrl(getEmbedFromMedia(nextWeb))));
+            }
+
+            while (localIterator.hasNext()) {
+                Map.Entry<Long, IMessage> nextLocal = localIterator.next();
+
+                if (nextWeb.getID() > nextLocal.getKey()) {
+                    // If we are behind, we skip until we find a news post
+                    // TODO: maybe delete old news posts
+                    continue;
+                } else if (nextWeb.getID().equals(nextLocal.getKey())) {
+                    EmbedObject processed = processMarkdown(extendAuthorIconUrl(getEmbedFromMedia(nextWeb)));
+                    if (!embedEqualsEmbedObject(nextLocal.getValue().getEmbeds().get(0), processed)) {
+                        nextLocal.getValue().edit(processed);
+                    }
+                    break;
+                } else {
+                    GECkO.logger.error("News post {} is missing locally, ignoring.", nextWeb.getID());
+                    break;
+                }
+            }
+        }
+
+        /*
+         * webNews:   4       5 6 7 8 9
+         * localNews: 1 2 3 4 5 6
+         */
+    }
 
     /**
      * Loads the news from the website. This should only be used once every restart.
@@ -61,11 +204,7 @@ public class MediaSynchronizer {
             return;
         }
 
-        try {
-            HttpResponse response = new RequestBuilder(API_URL + "/api/v2/web/" + mediaType)
-                    .addHeader("X-API-KEY", ConfigManager.getProperties().getProperty("geco_apiKey"))
-                    .get();
-
+        /*try {
             StatusLine statusLine = response.getStatusLine();
             //Header encoding = response.getEntity().getContentEncoding();
             //String content = IOUtils.toString(response.getEntity().getContent(), encoding.getValue() != null ? encoding.getValue() : "UTF-8");
@@ -218,7 +357,7 @@ public class MediaSynchronizer {
             }
         } catch (IOException e) {
             ErrorHandler.handleError(e);
-        }
+        }*/
     }
 
     /**
@@ -228,7 +367,7 @@ public class MediaSynchronizer {
      * @param message the embed to update or add
      * @param raw     if it should be parsed for discord or not
      */
-    public static void setNews(int id, EmbedObject message, boolean raw) {
+    public static void setNews(long id, EmbedObject message, boolean raw) {
         if (raw) {
             message = processMarkdown(extendAuthorIconUrl(message));
         }
@@ -261,7 +400,7 @@ public class MediaSynchronizer {
      * @param message the embed to update or add
      * @param raw     if it should be parsed for discord or not
      */
-    public static void setEvent(int id, EmbedObject message, boolean raw) {
+    public static void setEvent(long id, EmbedObject message, boolean raw) {
         if (raw) {
             message = processMarkdown(extendAuthorIconUrl(message));
         }
@@ -279,7 +418,7 @@ public class MediaSynchronizer {
      * @param id      the ID of the event post
      * @param message the embed to update or add
      */
-    public static void setEvent(int id, EmbedObject message) {
+    public static void setEvent(long id, EmbedObject message) {
         setEvent(id, message, true);
     }
 
@@ -288,7 +427,7 @@ public class MediaSynchronizer {
      *
      * @param id the ID of the news post to delete
      */
-    public static void deleteNews(int id) {
+    public static void deleteNews(long id) {
         news.remove(id).delete();
     }
 
@@ -297,7 +436,7 @@ public class MediaSynchronizer {
      *
      * @param id the ID of the event post to delete
      */
-    public static void deleteEvent(int id) {
+    public static void deleteEvent(long id) {
         events.remove(id).delete();
     }
 
@@ -309,7 +448,7 @@ public class MediaSynchronizer {
      */
     private static EmbedObject extendAuthorIconUrl(EmbedObject raw) {
         if (raw.author != null) {
-            raw.author.icon_url = API_URL + raw.author.icon_url;
+            raw.author.icon_url = BASE_URL + raw.author.icon_url;
         }
 
         return raw;

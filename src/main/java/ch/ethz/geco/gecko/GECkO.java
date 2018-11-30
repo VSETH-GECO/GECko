@@ -82,7 +82,7 @@ public class GECkO {
 
     public static void start(String token, String prefix, String configPath) {
         logger.info("GECkO");
-        logger.info("The official GECO Discord bot. 2016 - 2017, Licensed under Unlicense.");
+        logger.info("The official GECO Discord bot. 2016 - 2018, Licensed under Unlicense.");
 
         // Initialize config manager
         if (configPath != null) {

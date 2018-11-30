@@ -19,6 +19,7 @@
 
 package ch.ethz.geco.gecko.command.misc;
 
+import ch.ethz.geco.gecko.MediaSynchronizer;
 import ch.ethz.geco.gecko.command.Command;
 import sx.blah.discord.handle.obj.IMessage;
 
@@ -31,5 +32,6 @@ public class Test extends Command {
 
     @Override
     public void execute(IMessage msg, List<String> args) {
+        MediaSynchronizer.loadMedia();
     }
 }

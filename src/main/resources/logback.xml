@@ -33,7 +33,7 @@
         </encoder>
     </appender>
 
-    <!-- Send DEBUG - WARN to debug.log -->
+    <!-- Send DEBUG - ERROR to debug.log -->
     <appender name="DEBUGFILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <level>DEBUG</level>

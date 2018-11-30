@@ -135,6 +135,12 @@
             <version>1.2.3</version>
         </dependency>
 
+        <dependency>
+            <groupId>ch.ethz.geco</groupId>
+            <artifactId>GECo4J</artifactId>
+            <version>0.9.2</version>
+        </dependency>
+
         <!-- Maven and JGit used for the self-update process -->
         <dependency>
             <groupId>org.eclipse.jgit</groupId>

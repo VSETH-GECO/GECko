@@ -57,8 +57,8 @@ public class MediaSynchronizer {
     private static final IChannel newsChannel = GECkO.discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("media_newsChannelID")));
     private static final IChannel eventChannel = GECkO.discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("media_eventChannelID")));
 
-    private static final LinkedHashMap<Long, IMessage> news = new LinkedHashMap<>();
-    private static final LinkedHashMap<Long, IMessage> events = new LinkedHashMap<>();
+    private static final TreeMap<Long, IMessage> news = new TreeMap<>();
+    private static final TreeMap<Long, IMessage> events = new TreeMap<>();
 
     private static final Pattern idPattern = Pattern.compile("^\\s*https?://(?:www.)?geco.ethz.ch/(?:news|events)/(\\d+)/?\\s*$");
 
@@ -132,10 +132,34 @@ public class MediaSynchronizer {
             // Otherwise, delete it.
         }).forEach(IMessage::delete);
 
-        GECkO.logger.info("Found {} local news and {} local event posts.", news.size(), events.size());
+        GECkO.logger.debug("Found {} local news and {} local event posts.", news.size(), events.size());
+
+        StringBuilder newsPosts = new StringBuilder();
+        news.entrySet().forEach(entry -> {
+            if (!entry.getKey().equals(news.lastKey())) {
+                newsPosts.append(entry.getKey()).append(", ");
+            } else {
+                newsPosts.append(entry.getKey());
+            }
+        });
+
+        GECkO.logger.debug("News posts: {}", newsPosts.toString());
+
+        StringBuilder eventPosts = new StringBuilder();
+        events.entrySet().forEach(entry -> {
+            if (!entry.getKey().equals(news.lastKey())) {
+                eventPosts.append(entry.getKey()).append(", ");
+            } else {
+                eventPosts.append(entry.getKey());
+            }
+        });
+
+        GECkO.logger.debug("Event posts: {}", eventPosts.toString());
     }
 
     public static void loadMedia() {
+        GECkO.logger.info("Updating news and event channels.");
+
         // Re-read existing posts and cleanup
         init();
 
@@ -149,7 +173,7 @@ public class MediaSynchronizer {
             return;
         }
 
-        GECkO.logger.debug("Found {} remote news and {} remote event posts.", webNews.size(), webEvents.size());
+        GECkO.logger.info("Found {} remote news and {} remote event posts.", webNews.size(), webEvents.size());
 
         // Revert news since we need them in ascending order.
         Collections.reverse(webNews);
@@ -162,9 +186,11 @@ public class MediaSynchronizer {
         Iterator<Map.Entry<Long, IMessage>> localIterator = news.entrySet().iterator();
         while (webIterator.hasNext()) {
             INews nextWeb = webIterator.next();
+            GECkO.logger.debug("Searching local news post: {}", nextWeb.getID());
 
             // If there are no more local posts, but there are still web posts missing.
             if (!localIterator.hasNext()) {
+                GECkO.logger.debug("Posting new news post: {}", nextWeb.getID());
                 newsChannel.sendMessage(processMarkdown(extendAuthorIconUrl(getEmbedFromMedia(nextWeb))));
             }
 
@@ -174,11 +200,16 @@ public class MediaSynchronizer {
                 if (nextWeb.getID() > nextLocal.getKey()) {
                     // If we are behind, we skip until we find a news post
                     // TODO: maybe delete old news posts
+                    GECkO.logger.debug("Found old news post: {}", nextLocal.getKey());
                     continue;
                 } else if (nextWeb.getID().equals(nextLocal.getKey())) {
+                    GECkO.logger.debug("Checking local news post: {}", nextLocal.getKey());
                     EmbedObject processed = processMarkdown(extendAuthorIconUrl(getEmbedFromMedia(nextWeb)));
                     if (!embedEqualsEmbedObject(nextLocal.getValue().getEmbeds().get(0), processed)) {
+                        GECkO.logger.debug("Updating local news post: {}", nextLocal.getKey());
                         nextLocal.getValue().edit(processed);
+                    } else {
+                        GECkO.logger.debug("News post {} is up-to-date.", nextLocal.getKey());
                     }
                     break;
                 } else {

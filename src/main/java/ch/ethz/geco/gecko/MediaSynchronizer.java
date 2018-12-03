@@ -28,6 +28,7 @@ import sx.blah.discord.api.internal.json.objects.EmbedObject;
 import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IEmbed;
 import sx.blah.discord.handle.obj.IMessage;
+import sx.blah.discord.util.EmbedBuilder;
 import sx.blah.discord.util.MessageHistory;
 import sx.blah.discord.util.RequestBuffer;
 
@@ -130,29 +131,17 @@ public class MediaSynchronizer {
 
             return postID == null;
             // Otherwise, delete it.
-        }).forEach(IMessage::delete);
+        }).forEach(msg -> RequestBuffer.request(msg::delete).get());
 
         GECkO.logger.debug("Found {} local news and {} local event posts.", news.size(), events.size());
 
         StringBuilder newsPosts = new StringBuilder();
-        news.entrySet().forEach(entry -> {
-            if (!entry.getKey().equals(news.lastKey())) {
-                newsPosts.append(entry.getKey()).append(", ");
-            } else {
-                newsPosts.append(entry.getKey());
-            }
-        });
+        news.forEach((key, value) -> newsPosts.append(key).append(" "));
 
         GECkO.logger.debug("News posts: {}", newsPosts.toString());
 
         StringBuilder eventPosts = new StringBuilder();
-        events.entrySet().forEach(entry -> {
-            if (!entry.getKey().equals(news.lastKey())) {
-                eventPosts.append(entry.getKey()).append(", ");
-            } else {
-                eventPosts.append(entry.getKey());
-            }
-        });
+        events.forEach((key, value) -> eventPosts.append(key).append(" "));
 
         GECkO.logger.debug("Event posts: {}", eventPosts.toString());
     }
@@ -181,214 +170,67 @@ public class MediaSynchronizer {
         // Removes all draft news
         webNews.removeIf(INews::isDraft);
 
-        int webIndex = 0;
-        Iterator<INews> webIterator = webNews.iterator();
-        Iterator<Map.Entry<Long, IMessage>> localIterator = news.entrySet().iterator();
-        while (webIterator.hasNext()) {
-            INews nextWeb = webIterator.next();
+        /* TODO: Handle drafts correctly
+         *  Remove messages which where drafted after they got posted?
+         */
+
+        boolean stay = false;
+        Map.Entry<Long, IMessage> nextLocal = null;
+
+        Iterator<INews> webNewsIterator = webNews.iterator();
+        Iterator<Map.Entry<Long, IMessage>> localNewsIterator = news.entrySet().iterator();
+        while (webNewsIterator.hasNext()) {
+            INews nextWeb = webNewsIterator.next();
             GECkO.logger.debug("Searching local news post: {}", nextWeb.getID());
 
             // If there are no more local posts, but there are still web posts missing.
-            if (!localIterator.hasNext()) {
+            if (!localNewsIterator.hasNext()) {
+                RequestBuffer.request(() -> {
+                    newsChannel.sendMessage(processEmbed(getEmbedFromMedia(nextWeb)));
+                }).get();
+
                 GECkO.logger.debug("Posting new news post: {}", nextWeb.getID());
-                newsChannel.sendMessage(processMarkdown(extendAuthorIconUrl(getEmbedFromMedia(nextWeb))));
             }
 
-            while (localIterator.hasNext()) {
-                Map.Entry<Long, IMessage> nextLocal = localIterator.next();
+            while (localNewsIterator.hasNext() || stay) {
+                if (!stay) {
+                    nextLocal = localNewsIterator.next();
+                }
 
                 if (nextWeb.getID() > nextLocal.getKey()) {
                     // If we are behind, we skip until we find a news post
-                    // TODO: maybe delete old news posts
                     GECkO.logger.debug("Found old news post: {}", nextLocal.getKey());
-                    continue;
+                    stay = false;
                 } else if (nextWeb.getID().equals(nextLocal.getKey())) {
                     GECkO.logger.debug("Checking local news post: {}", nextLocal.getKey());
-                    EmbedObject processed = processMarkdown(extendAuthorIconUrl(getEmbedFromMedia(nextWeb)));
+                    EmbedObject processed = processEmbed(getEmbedFromMedia(nextWeb));
                     if (!embedEqualsEmbedObject(nextLocal.getValue().getEmbeds().get(0), processed)) {
+                        Map.Entry<Long, IMessage> finalNextLocal = nextLocal;
+                        RequestBuffer.request(() -> {
+                            finalNextLocal.getValue().edit(processed);
+                        }).get();
+
                         GECkO.logger.debug("Updating local news post: {}", nextLocal.getKey());
-                        nextLocal.getValue().edit(processed);
                     } else {
                         GECkO.logger.debug("News post {} is up-to-date.", nextLocal.getKey());
                     }
+                    stay = false;
                     break;
                 } else {
-                    GECkO.logger.error("News post {} is missing locally, ignoring.", nextWeb.getID());
+                    GECkO.logger.warn("News post {} is missing locally, ignoring.", nextWeb.getID());
+                    stay = true;
                     break;
                 }
             }
         }
 
-        /*
-         * webNews:   4       5 6 7 8 9
-         * localNews: 1 2 3 4 5 6
+        /* TODO: Events
+         *  We need to handle events differently.
+         *  Every active event should always show up. That means that if there are inconsistencies,
+         *  we need to reset the channel and re-post all events.
          */
-    }
 
-    /**
-     * Loads the news from the website. This should only be used once every restart.
-     * Possible mediaType values: "news", "events"
-     */
-    public static void loadMedia(String mediaType) {
-        // Abort with wrong arguments
-        if (!mediaType.equals("news") && !mediaType.equals("events")) {
-            return;
-        }
 
-        /*try {
-            StatusLine statusLine = response.getStatusLine();
-            //Header encoding = response.getEntity().getContentEncoding();
-            //String content = IOUtils.toString(response.getEntity().getContent(), encoding.getValue() != null ? encoding.getValue() : "UTF-8");
-
-            switch (statusLine.getStatusCode()) {
-                case 200:
-                    // Directly map json to embed objects
-                    List<EmbedObject> webEmbeds = DiscordUtils.MAPPER.readValue(response.getEntity().getContent(),
-                            DiscordUtils.MAPPER.getTypeFactory().constructCollectionType(List.class, EmbedObject.class));
-                    DualHashBidiMap<Integer, EmbedObject> webEmbedMap = new DualHashBidiMap<>();
-
-                    GECkO.logger.debug("Found {} remote {} posts.", webEmbeds.size(), mediaType);
-
-                    Map<Integer, IMessage> media = null;
-                    if (mediaType.equals("news")) {
-                        media = news;
-                    } else if (mediaType.equals("events")) {
-                        media = events;
-                    }
-
-                    // Extra loop to add the embed to the embed map.
-                    // We can't do this inside the sorting method since it does not get executed
-                    // when there is only one element in the embed list.
-                    for (EmbedObject embedObject : webEmbeds) {
-                        Matcher idMatcher = idPattern.matcher(embedObject.url);
-
-                        if (idMatcher.find()) {
-                            int id = Integer.parseInt(idMatcher.group(1));
-                            webEmbedMap.put(id, embedObject);
-                        }
-                    }
-
-                    // Sort embeds by media ID or remove them if they don't have a media ID
-                    webEmbeds.sort(Comparator.comparing(embedObject -> {
-                        if (webEmbedMap.containsValue(embedObject)) {
-                            return webEmbedMap.getKey(embedObject);
-                        } else {
-                            // Don't add elements without IDs
-                            GECkO.logger.warn("Received news {} without ID. Contact the Web Master!", mediaType);
-                            return 0;
-                        }
-                    }));
-
-                    // Remove all embeds which don't have an ID
-                    webEmbeds.removeIf(embedObject -> !webEmbedMap.containsValue(embedObject));
-
-                    // Get the last 20 messages
-                    List<IMessage> mediaHistory = null;
-                    if (mediaType.equals("news")) {
-                        mediaHistory = newsChannel.getMessageHistory(20);
-                    } else if (mediaType.equals("events")) {
-                        mediaHistory = eventChannel.getMessageHistory(20);
-                    }
-
-                    GECkO.logger.debug("Found {} messages in the {} channel.", mediaHistory.size(), mediaType);
-
-                    // Load existing news posts
-                    for (IMessage message : mediaHistory) {
-                        if (message.getEmbeds() != null && message.getEmbeds().size() > 0) {
-                            IEmbed embed = message.getEmbeds().get(0);
-                            Matcher idMatcher = idPattern.matcher(embed.getUrl());
-
-                            if (idMatcher.find()) {
-                                int id = Integer.parseInt(idMatcher.group(1));
-
-                                if (webEmbedMap.containsKey(id)) {
-                                    media.put(id, message);
-                                    continue;
-                                } else {
-                                    GECkO.logger.debug("Removing {} post without corresponding web embed", mediaType);
-                                }
-                            } else {
-                                GECkO.logger.debug("Removing message without ID.");
-                            }
-                        } else {
-                            GECkO.logger.debug("Removing message without embed.");
-                        }
-
-                        // Delete message of media post if it doesn't have an ID or no corresponding web embed
-                        message.delete();
-                    }
-                    GECkO.logger.debug("Loaded {} existing {} posts.", media.size(), mediaType);
-
-                    // Checking for missing media posts and update existing ones
-                    int firstMissing = -1;
-                    int lastFound = -1;
-                    for (EmbedObject embedObject : webEmbeds) {
-                        // If there is already a media post corresponding to the current web embed
-                        int curID = webEmbedMap.getKey(embedObject);
-
-                        IMessage newsMessage = media.get(curID);
-                        if (newsMessage != null) {
-                            lastFound = curID;
-
-                            final EmbedObject processedEmbed = processMarkdown(extendAuthorIconUrl(embedObject));
-                            if (!embedEqualsEmbedObject(newsMessage.getEmbeds().get(0), processedEmbed)) {
-                                GECkO.logger.debug("Updating {} post: {}", mediaType, curID);
-                                RequestBuffer.request(() -> {
-                                    newsMessage.edit(processedEmbed);
-                                }).get();
-                            } else {
-                                GECkO.logger.debug("{} post {} is up-to-date.", StringUtils.capitalize(mediaType), curID);
-                            }
-                        } else {
-                            if (firstMissing == -1) {
-                                firstMissing = curID;
-                            }
-                        }
-                    }
-
-                    // Fix missing posts
-                    for (EmbedObject embedObject : webEmbeds) {
-                        int curID = webEmbedMap.getKey(embedObject);
-
-                        // If it's not already in the media channel
-                        if (!media.containsKey(curID)) {
-                            // If the missing post is before already existing posts, we can't post it since we
-                            // can't post messages before other messages.
-                            if (lastFound > curID) {
-                                GECkO.logger.warn("Missing {} post {} in between. Can't fix without breaking reactions. Ignoring.", mediaType, curID);
-                            } else {
-                                GECkO.logger.debug("Posting missing {} post with ID: {}", mediaType, curID);
-                                final EmbedObject processedEmbed = processMarkdown(extendAuthorIconUrl(embedObject));
-                                RequestBuffer.request(() -> {
-                                    if (mediaType.equals("news")) {
-                                        newsChannel.sendMessage(processedEmbed);
-                                    } else if (mediaType.equals("events")) {
-                                        eventChannel.sendMessage(processedEmbed);
-                                    }
-                                }).get();
-                            }
-                        }
-                    }
-                    break;
-                case 400: // Bad Request
-                    ErrorHandler.handleError(new APIException("Bad Request"));
-                    break;
-                case 401: // Unauthorized
-                    ErrorHandler.handleError(new APIException("Bot is unauthorized."));
-                    break;
-                case 403: // Forbidden
-                    ErrorHandler.handleError(new APIException("Forbidden"));
-                    break;
-                case 404: // Not Found
-                    ErrorHandler.handleError(new APIException("Not found"));
-                    break;
-                case 500: // Internal Server Error
-                    ErrorHandler.handleError(new APIException("Internal Server Error"));
-                    break;
-            }
-        } catch (IOException e) {
-            ErrorHandler.handleError(e);
-        }*/
     }
 
     /**
@@ -400,7 +242,7 @@ public class MediaSynchronizer {
      */
     public static void setNews(long id, EmbedObject message, boolean raw) {
         if (raw) {
-            message = processMarkdown(extendAuthorIconUrl(message));
+            message = processEmbed(message);
         }
 
         final EmbedObject finalMsg = message;
@@ -433,7 +275,7 @@ public class MediaSynchronizer {
      */
     public static void setEvent(long id, EmbedObject message, boolean raw) {
         if (raw) {
-            message = processMarkdown(extendAuthorIconUrl(message));
+            message = processEmbed(message);
         }
 
         if (events.containsKey(id)) {
@@ -471,20 +313,6 @@ public class MediaSynchronizer {
         events.remove(id).delete();
     }
 
-    /**
-     * Extends the author icon url to the absolute address instead of relative address.
-     *
-     * @param raw the embed to process
-     * @return the embed with fixed icon url.
-     */
-    private static EmbedObject extendAuthorIconUrl(EmbedObject raw) {
-        if (raw.author != null) {
-            raw.author.icon_url = BASE_URL + raw.author.icon_url;
-        }
-
-        return raw;
-    }
-
     // Pre-compile all needed patterns
     private static final Pattern headerPattern = Pattern.compile("(#+)\\s*([^\\r\\n]+)(?>\\r\\n|\\r|\\n|$)");
     private static final Pattern imagePattern = Pattern.compile("!\\[[^]]*]\\(([^)]*)\\)");
@@ -501,7 +329,7 @@ public class MediaSynchronizer {
      * @param raw the embed with unprocessed description
      * @return the processed embed
      */
-    public static EmbedObject processMarkdown(EmbedObject raw) {
+    public static EmbedObject processEmbed(EmbedObject raw) {
         /* Markdown Processing:
          * - Emphasis:  supported
          * ->Header:    not supported and has to be parsed
@@ -516,7 +344,7 @@ public class MediaSynchronizer {
          * Extension:
          * ->Text Highlighting: not supported and has to be parsed
          * - Horizontal Line:   not supported but left as is
-         *                      TODO: could be done as empty code block?
+         *                      TODO: could be done as empty code block or embed fields?
          * ->Icon:              not supported and has to be removed
          * ->IFrame:            not supported but has to be parsed
          */
@@ -636,7 +464,36 @@ public class MediaSynchronizer {
             iFrameMatcher = iframePattern.matcher(description);
         }
 
+        // Extend author icon URL
+        if (raw.author != null) {
+            raw.author.icon_url = BASE_URL + raw.author.icon_url;
+        }
+
+        // Trimming
         raw.description = description.trim();
+        raw.title = raw.title.trim();
+        raw.url = raw.url.trim();
+
+        if (raw.author != null) {
+            raw.author.icon_url = raw.author.icon_url.trim();
+            raw.author.name = raw.author.name.trim();
+            raw.author.url = raw.author.url.trim();
+        }
+
+        if (raw.footer != null) {
+            raw.footer.text = raw.footer.text.trim();
+        }
+
+        if (raw.image != null) {
+            raw.image.url = raw.image.url.trim();
+        }
+
+        // Description length trimming
+        if (raw.description.length() > EmbedBuilder.DESCRIPTION_CONTENT_LIMIT) {
+            String trimString = "...\n\n[Read more](" + raw.url + ")";
+            raw.description = raw.description.substring(0, EmbedBuilder.DESCRIPTION_CONTENT_LIMIT - trimString.length()) + trimString;
+        }
+
         return raw;
     }
 

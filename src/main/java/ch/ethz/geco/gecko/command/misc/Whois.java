@@ -19,11 +19,10 @@
 
 package ch.ethz.geco.gecko.command.misc;
 
+import ch.ethz.geco.g4j.obj.ILanUser;
+import ch.ethz.geco.gecko.GECkO;
 import ch.ethz.geco.gecko.command.Command;
 import ch.ethz.geco.gecko.command.CommandUtils;
-import ch.ethz.geco.gecko.rest.api.geco.GecoAPI;
-import ch.ethz.geco.gecko.rest.api.geco.UserInfo;
-import org.apache.commons.lang3.StringUtils;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
 
@@ -43,23 +42,22 @@ public class Whois extends Command {
             IUser user = msg.getMentions().get(0);
             String message;
             try {
-                UserInfo userInfo = GecoAPI.getUserInfoByDiscordID(user.getLongID());
+                ch.ethz.geco.g4j.obj.IUser userInfo = GECkO.gecoClient.getUserByDiscordID(user.getLongID());
                 if (userInfo != null) {
-                    message = "**__User: " + user.getName() + "#" + user.getDiscriminator() + "__**\n**GECO:** <https://geco.ethz.ch/user/" + userInfo.getWebID() + ">";
+                    message = "**__User: " + user.getName() + "#" + user.getDiscriminator() + "__**\n**GECO:** <https://geco.ethz.ch/user/" + userInfo.getID() + ">";
 
-                    String steamAccount = userInfo.getAccount(UserInfo.AccountType.STEAM);
-                    if (steamAccount != null) {
-                        message += "\n**Steam:** <http://steamcommunity.com/profiles/" + steamAccount + ">";
+                    if (userInfo.getSteamID().isPresent()) {
+                        message += "\n**Steam:** <http://steamcommunity.com/profiles/" + userInfo.getSteamID().get() + ">";
                     }
 
-                    String blizzardAccount = userInfo.getAccount(UserInfo.AccountType.BLIZZARD);
-                    if (blizzardAccount != null) {
-                        message += "\n**Battle.net:** " + blizzardAccount;
+                    if (userInfo.getBattleNetID().isPresent()) {
+                        message += "\n**Battle.net:** " + userInfo.getBattleNetID().get();
                     }
 
-                    if (GecoAPI.loadLanUser(userInfo)) {
-                        if (userInfo.getSeat() != null && !userInfo.getSeat().equals("")) {
-                            message += "\n**Seat:** " + userInfo.getSeat();
+                    ILanUser lanUser = GECkO.gecoClient.getLanUserByName(userInfo.getUserName());
+                    if (lanUser != null) {
+                        if (lanUser.getSeatName().isPresent() && !lanUser.getSeatName().get().equals("")) {
+                            message += "\n**Seat:** " + lanUser.getSeatName().get();
                         }
                     }
                 } else {

@@ -138,7 +138,7 @@
         <dependency>
             <groupId>ch.ethz.geco</groupId>
             <artifactId>GECo4J</artifactId>
-            <version>0.9.3</version>
+            <version>0.9.4</version>
         </dependency>
 
         <!-- Maven and JGit used for the self-update process -->

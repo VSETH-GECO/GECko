@@ -19,9 +19,7 @@
 
 package ch.ethz.geco.gecko;
 
-import ch.ethz.geco.g4j.impl.GECoClient;
 import ch.ethz.geco.g4j.obj.IEvent;
-import ch.ethz.geco.g4j.obj.IGECoClient;
 import ch.ethz.geco.g4j.obj.INews;
 import sx.blah.discord.api.ClientBuilder;
 import sx.blah.discord.api.internal.json.objects.EmbedObject;
@@ -54,17 +52,28 @@ import java.util.regex.Pattern;
  */
 public class MediaSynchronizer {
     private static final String BASE_URL = "https://geco.ethz.ch";
-    private static final IChannel newsChannel = GECkO.discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("media_newsChannelID")));
-    private static final IChannel eventChannel = GECkO.discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("media_eventChannelID")));
+    private static final IChannel NEWS_CHANNEL = GECkO.discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("media_newsChannelID")));
+    private static final IChannel EVENT_CHANNEL = GECkO.discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("media_eventChannelID")));
+    private static final Integer UPDATE_INTERVAL_MIN = 10;
 
     private static final ArrayList<Long> newsOrdering = new ArrayList<>();
     private static final LinkedHashMap<Long, IMessage> news = new LinkedHashMap<>();
-    private static final ArrayList<Long> eventOrdering = new ArrayList<>();
     private static final LinkedHashMap<Long, IMessage> events = new LinkedHashMap<>();
 
     private static final Pattern idPattern = Pattern.compile("^\\s*https?://(?:www.)?geco.ethz.ch/(?:news|events)/(\\d+)/?\\s*$");
 
-    private static final IGECoClient gecoClient = new GECoClient(ConfigManager.getProperties().getProperty("geco_apiKey"));
+    public static void startPeriodicCheck() {
+        GECkO.logger.info("Starting periodic media sync.");
+
+        new Timer().schedule(new TimerTask() {
+            @Override
+            public void run() {
+                init();
+                loadNews();
+                loadEvents();
+            }
+        }, 0, UPDATE_INTERVAL_MIN * 60000);
+    }
 
     private static EmbedObject getEmbedFromMedia(INews news) {
         return new EmbedObject(news.getTitle(), "rich", news.getDescription(), news.getURL(), null,
@@ -106,8 +115,8 @@ public class MediaSynchronizer {
      * Reads in all existing news and event entries and removes invalid entries.
      */
     public static void init() {
-        MessageHistory newsMessages = newsChannel.getMessageHistory(ClientBuilder.DEFAULT_MESSAGE_CACHE_LIMIT);
-        MessageHistory eventMessages = eventChannel.getMessageHistory(ClientBuilder.DEFAULT_MESSAGE_CACHE_LIMIT);
+        MessageHistory newsMessages = NEWS_CHANNEL.getMessageHistory(ClientBuilder.DEFAULT_MESSAGE_CACHE_LIMIT);
+        MessageHistory eventMessages = EVENT_CHANNEL.getMessageHistory(ClientBuilder.DEFAULT_MESSAGE_CACHE_LIMIT);
 
         // Sort by timestamp for sanity check
         newsMessages.sort(Comparator.comparing(iMessage -> iMessage.getTimestamp().toEpochMilli()));
@@ -129,12 +138,10 @@ public class MediaSynchronizer {
         }).forEach(IMessage::delete);
 
         MediaSynchronizer.events.clear();
-        MediaSynchronizer.eventOrdering.clear();
         eventMessages.stream().filter(message -> {
             Long postID = getPostID(message);
             // If a message has an ID, put it into the mapping
             if (postID != null) {
-                eventOrdering.add(postID);
                 MediaSynchronizer.events.put(postID, message);
             }
 
@@ -158,7 +165,7 @@ public class MediaSynchronizer {
     public static void loadNews() {
         GECkO.logger.info("Updating news channel.");
 
-        List<INews> webNews = gecoClient.getNews(1);
+        List<INews> webNews = GECkO.gecoClient.getNews(1);
         if (webNews == null) {
             return;
         }
@@ -221,15 +228,13 @@ public class MediaSynchronizer {
         boolean stay = false;
         Map.Entry<Long, IMessage> nextLocal = null;
         localNewsIterator = news.entrySet().iterator();
-        Iterator<INews> webNewsIterator = webNews.iterator();
-        while (webNewsIterator.hasNext()) {
-            INews nextWeb = webNewsIterator.next();
+        for (INews nextWeb : webNews) {
             GECkO.logger.debug("Searching local news post: {}", nextWeb.getID());
 
             // If there are no more local posts, but there are still web posts missing.
             if (!localNewsIterator.hasNext()) {
                 GECkO.logger.debug("Posting new news post: {}", nextWeb.getID());
-                RequestBuffer.request(() -> newsChannel.sendMessage(processEmbed(getEmbedFromMedia(nextWeb)))).get();
+                RequestBuffer.request(() -> NEWS_CHANNEL.sendMessage(processEmbed(getEmbedFromMedia(nextWeb)))).get();
             }
 
             while (localNewsIterator.hasNext() || stay) {
@@ -268,7 +273,7 @@ public class MediaSynchronizer {
     public static void loadEvents() {
         GECkO.logger.info("Updating events channel.");
 
-        List<IEvent> webEvents = gecoClient.getEvents(1);
+        List<IEvent> webEvents = GECkO.gecoClient.getEvents(1);
         if (webEvents == null) {
             return;
         }
@@ -314,7 +319,7 @@ public class MediaSynchronizer {
                     GECkO.logger.debug("Event post {} is up-to-date.", event.getID());
                 }
             } else {
-                RequestBuffer.request(() -> eventChannel.sendMessage(processed)).get();
+                RequestBuffer.request(() -> EVENT_CHANNEL.sendMessage(processed)).get();
                 GECkO.logger.debug("Posting new event post: {}", event.getID());
             }
         });
@@ -327,9 +332,9 @@ public class MediaSynchronizer {
      * @param message the embed to update or add
      * @param raw     if it should be parsed for discord or not
      */
-    public static void setNews(long id, EmbedObject message, boolean raw) {
+    private static void setNews(long id, EmbedObject message, boolean raw) {
         if (raw) {
-            message = processEmbed(message);
+            processEmbed(message);
         }
 
         final EmbedObject finalMsg = message;
@@ -338,7 +343,7 @@ public class MediaSynchronizer {
             if (news.containsKey(id)) {
                 news.get(id).edit(finalMsg);
             } else {
-                news.put(id, newsChannel.sendMessage(finalMsg));
+                news.put(id, NEWS_CHANNEL.sendMessage(finalMsg));
             }
         }).get();
     }
@@ -360,15 +365,15 @@ public class MediaSynchronizer {
      * @param message the embed to update or add
      * @param raw     if it should be parsed for discord or not
      */
-    public static void setEvent(long id, EmbedObject message, boolean raw) {
+    private static void setEvent(long id, EmbedObject message, boolean raw) {
         if (raw) {
-            message = processEmbed(message);
+            processEmbed(message);
         }
 
         if (events.containsKey(id)) {
             events.get(id).edit(message);
         } else {
-            events.put(id, eventChannel.sendMessage(message));
+            events.put(id, EVENT_CHANNEL.sendMessage(message));
         }
     }
 
@@ -416,7 +421,7 @@ public class MediaSynchronizer {
      * @param raw the embed with unprocessed description
      * @return the processed embed
      */
-    public static EmbedObject processEmbed(EmbedObject raw) {
+    private static EmbedObject processEmbed(EmbedObject raw) {
         /* Markdown Processing:
          * - Emphasis:  supported
          * ->Header:    not supported and has to be parsed

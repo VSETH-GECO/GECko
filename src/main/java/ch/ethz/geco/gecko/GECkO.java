@@ -19,6 +19,8 @@
 
 package ch.ethz.geco.gecko;
 
+import ch.ethz.geco.g4j.impl.GECoClient;
+import ch.ethz.geco.g4j.obj.IGECoClient;
 import ch.ethz.geco.gecko.command.CommandBank;
 import ch.ethz.geco.gecko.command.CommandHandler;
 import ch.ethz.geco.gecko.command.CommandUtils;
@@ -26,17 +28,19 @@ import ch.ethz.geco.gecko.rest.WebHookServer;
 import org.slf4j.LoggerFactory;
 import sx.blah.discord.api.ClientBuilder;
 import sx.blah.discord.api.IDiscordClient;
-import sx.blah.discord.api.events.EventDispatcher;
 import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.util.DiscordException;
 
-import java.io.IOException;
-
 public class GECkO {
     /**
-     * The discord client used by the bot.
+     * The Discord client used by the bot.
      */
     public static IDiscordClient discordClient;
+
+    /**
+     * The GECo client used by the bot.
+     */
+    public static IGECoClient gecoClient;
 
     /**
      * The main channel where the bot posts debug/testing stuff.
@@ -120,6 +124,9 @@ public class GECkO {
      * Called after the Discord API is ready to operate.
      */
     public static void postInit() {
+        // Login
+        gecoClient = new GECoClient(ConfigManager.getProperties().getProperty("geco_apiKey"));
+
         // Set main channel
         mainChannel = discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("main_mainChannelID")));
 
@@ -131,6 +138,8 @@ public class GECkO {
 
         // Start to listen to commands after initializing everything else
         discordClient.getDispatcher().registerListener(new CommandHandler());
+
+        MediaSynchronizer.startPeriodicCheck();
 
         CommandUtils.respond(mainChannel, "**Initialized!**");
     }

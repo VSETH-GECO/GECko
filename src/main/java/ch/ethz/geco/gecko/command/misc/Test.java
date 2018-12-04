@@ -32,6 +32,8 @@ public class Test extends Command {
 
     @Override
     public void execute(IMessage msg, List<String> args) {
-        MediaSynchronizer.loadMedia();
+        MediaSynchronizer.init();
+        MediaSynchronizer.loadNews();
+        MediaSynchronizer.loadEvents();
     }
 }

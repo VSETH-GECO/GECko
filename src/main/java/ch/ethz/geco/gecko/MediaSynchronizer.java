@@ -40,10 +40,9 @@ import java.util.regex.Pattern;
  * Implementation help:
  *  - After restart
  *      1)      Read existing entries and cleanup
- *      1.1)    (Save into memory)
  *  - Periodic checking and updating
  *      1)      Load news from website (all or last page?)
- *      2)      Read existing entries (maybe from memory if initial setup reads entries)
+ *      2)      Read existing entries
  *      3)      Compare and edit entries
  *  - Websocket support
  *      - Support updating, deletion and creation
@@ -58,8 +57,10 @@ public class MediaSynchronizer {
     private static final IChannel newsChannel = GECkO.discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("media_newsChannelID")));
     private static final IChannel eventChannel = GECkO.discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("media_eventChannelID")));
 
-    private static final TreeMap<Long, IMessage> news = new TreeMap<>();
-    private static final TreeMap<Long, IMessage> events = new TreeMap<>();
+    private static final ArrayList<Long> newsOrdering = new ArrayList<>();
+    private static final LinkedHashMap<Long, IMessage> news = new LinkedHashMap<>();
+    private static final ArrayList<Long> eventOrdering = new ArrayList<>();
+    private static final LinkedHashMap<Long, IMessage> events = new LinkedHashMap<>();
 
     private static final Pattern idPattern = Pattern.compile("^\\s*https?://(?:www.)?geco.ethz.ch/(?:news|events)/(\\d+)/?\\s*$");
 
@@ -104,16 +105,22 @@ public class MediaSynchronizer {
     /**
      * Reads in all existing news and event entries and removes invalid entries.
      */
-    private static void init() {
+    public static void init() {
         MessageHistory newsMessages = newsChannel.getMessageHistory(ClientBuilder.DEFAULT_MESSAGE_CACHE_LIMIT);
         MessageHistory eventMessages = eventChannel.getMessageHistory(ClientBuilder.DEFAULT_MESSAGE_CACHE_LIMIT);
 
+        // Sort by timestamp for sanity check
+        newsMessages.sort(Comparator.comparing(iMessage -> iMessage.getTimestamp().toEpochMilli()));
+        eventMessages.sort(Comparator.comparing(iMessage -> iMessage.getTimestamp().toEpochMilli()));
+
         // Reinitialize ID to post mappings
         MediaSynchronizer.news.clear();
+        MediaSynchronizer.newsOrdering.clear();
         newsMessages.stream().filter(message -> {
             Long postID = getPostID(message);
             // If a message has an ID, put it into the mapping
             if (postID != null) {
+                newsOrdering.add(postID);
                 MediaSynchronizer.news.put(postID, message);
             }
 
@@ -122,10 +129,12 @@ public class MediaSynchronizer {
         }).forEach(IMessage::delete);
 
         MediaSynchronizer.events.clear();
+        MediaSynchronizer.eventOrdering.clear();
         eventMessages.stream().filter(message -> {
             Long postID = getPostID(message);
             // If a message has an ID, put it into the mapping
             if (postID != null) {
+                eventOrdering.add(postID);
                 MediaSynchronizer.events.put(postID, message);
             }
 
@@ -146,50 +155,81 @@ public class MediaSynchronizer {
         GECkO.logger.debug("Event posts: {}", eventPosts.toString());
     }
 
-    public static void loadMedia() {
-        GECkO.logger.info("Updating news and event channels.");
-
-        // Re-read existing posts and cleanup
-        init();
+    public static void loadNews() {
+        GECkO.logger.info("Updating news channel.");
 
         List<INews> webNews = gecoClient.getNews(1);
         if (webNews == null) {
             return;
         }
 
-        List<IEvent> webEvents = gecoClient.getEvents(1);
-        if (webEvents == null) {
+        GECkO.logger.debug("Found {} remote news posts.", webNews.size());
+
+        if (webNews.isEmpty()) {
+            GECkO.logger.warn("This is very unlikely to happen. Possible Bug!");
             return;
         }
 
-        GECkO.logger.info("Found {} remote news and {} remote event posts.", webNews.size(), webEvents.size());
+        // Sort ascending for sanity check
+        webNews.sort(Comparator.comparing(INews::getPublishedAt));
 
-        // Revert news since we need them in ascending order.
-        Collections.reverse(webNews);
+        // Store all available news post IDs
+        List<Long> webIDs = new ArrayList<>();
+        webNews.forEach(post -> webIDs.add(post.getID()));
 
-        // Removes all draft news
+        // Remove drafts from web news
         webNews.removeIf(INews::isDraft);
 
-        /* TODO: Handle drafts correctly
-         *  Remove messages which where drafted after they got posted?
-         */
+        // Remove all posts missing remotely after the first web post
+        GECkO.logger.debug("Deleting drafts and deleted posts.");
+        if (newsOrdering.contains(webIDs.get(0))) {
+            news.forEach((id, post) -> {
+                if (newsOrdering.indexOf(id) >= newsOrdering.indexOf(webIDs.get(0)) && !webIDs.contains(id)) {
+                    GECkO.logger.debug("Deleting news post: {}", id);
+                    RequestBuffer.request(post::delete).get();
+                }
+            });
+
+            news.entrySet().removeIf(post -> newsOrdering.indexOf(post.getKey()) >= newsOrdering.indexOf(webIDs.get(0)) && !webIDs.contains(post.getKey()));
+        }
+
+        // Check proper ordering of local posts
+        // TODO: Might break if posts are missing locally in the middle
+        GECkO.logger.debug("Checking for wrongly ordered posts.");
+        Iterator<Map.Entry<Long, IMessage>> localNewsIterator = news.entrySet().iterator();
+        boolean foundFirst = false;
+        while (localNewsIterator.hasNext() && !webIDs.isEmpty()) {
+            Map.Entry<Long, IMessage> next = localNewsIterator.next();
+
+            if (!foundFirst && next.getKey().equals(webIDs.get(0))) {
+                webIDs.remove(0);
+                foundFirst = true;
+                continue;
+            }
+
+            if (foundFirst) {
+                if (!next.getKey().equals(webIDs.get(0))) {
+                    GECkO.logger.debug("News post {} is wrongly ordered, removing...", next.getKey());
+                    RequestBuffer.request(() -> next.getValue().delete()).get();
+                    localNewsIterator.remove();
+                } else {
+                    webIDs.remove(0);
+                }
+            }
+        }
 
         boolean stay = false;
         Map.Entry<Long, IMessage> nextLocal = null;
-
+        localNewsIterator = news.entrySet().iterator();
         Iterator<INews> webNewsIterator = webNews.iterator();
-        Iterator<Map.Entry<Long, IMessage>> localNewsIterator = news.entrySet().iterator();
         while (webNewsIterator.hasNext()) {
             INews nextWeb = webNewsIterator.next();
             GECkO.logger.debug("Searching local news post: {}", nextWeb.getID());
 
             // If there are no more local posts, but there are still web posts missing.
             if (!localNewsIterator.hasNext()) {
-                RequestBuffer.request(() -> {
-                    newsChannel.sendMessage(processEmbed(getEmbedFromMedia(nextWeb)));
-                }).get();
-
                 GECkO.logger.debug("Posting new news post: {}", nextWeb.getID());
+                RequestBuffer.request(() -> newsChannel.sendMessage(processEmbed(getEmbedFromMedia(nextWeb)))).get();
             }
 
             while (localNewsIterator.hasNext() || stay) {
@@ -197,7 +237,7 @@ public class MediaSynchronizer {
                     nextLocal = localNewsIterator.next();
                 }
 
-                if (nextWeb.getID() > nextLocal.getKey()) {
+                if (newsOrdering.contains(webNews.get(0).getID()) && newsOrdering.indexOf(nextLocal.getKey()) < newsOrdering.indexOf(webNews.get(0).getID())) {
                     // If we are behind, we skip until we find a news post
                     GECkO.logger.debug("Found old news post: {}", nextLocal.getKey());
                     stay = false;
@@ -223,14 +263,61 @@ public class MediaSynchronizer {
                 }
             }
         }
+    }
 
-        /* TODO: Events
-         *  We need to handle events differently.
-         *  Every active event should always show up. That means that if there are inconsistencies,
-         *  we need to reset the channel and re-post all events.
-         */
+    public static void loadEvents() {
+        GECkO.logger.info("Updating events channel.");
 
+        List<IEvent> webEvents = gecoClient.getEvents(1);
+        if (webEvents == null) {
+            return;
+        }
 
+        GECkO.logger.debug("Found {} remote event posts.", webEvents.size());
+
+        // Store all available event post IDs
+        List<Long> eventIDs = new ArrayList<>();
+        webEvents.forEach(event -> eventIDs.add(event.getID()));
+
+        GECkO.logger.debug("Deleting deleted events.");
+        events.forEach((id, message) -> {
+            if (!eventIDs.contains(id)) {
+                RequestBuffer.request(message::delete).get();
+            }
+        });
+        events.entrySet().removeIf(entry -> !eventIDs.contains(entry.getKey()));
+
+        // Check proper ordering of local posts
+        GECkO.logger.debug("Checking for wrongly ordered posts.");
+        Iterator<Map.Entry<Long, IMessage>> localEventsIterator = events.entrySet().iterator();
+        while (localEventsIterator.hasNext() && !eventIDs.isEmpty()) {
+            Map.Entry<Long, IMessage> next = localEventsIterator.next();
+
+            if (!next.getKey().equals(eventIDs.get(0))) {
+                GECkO.logger.info("Found order inconsistencies in events channel, wiping...");
+                events.forEach((id, message) -> RequestBuffer.request(message::delete).get());
+                events.clear();
+                break;
+            } else {
+                eventIDs.remove(0);
+            }
+        }
+
+        // Checking and Updating
+        webEvents.forEach(event -> {
+            EmbedObject processed = processEmbed(getEmbedFromMedia(event));
+            if (events.containsKey(event.getID())) {
+                if (!embedEqualsEmbedObject(events.get(event.getID()).getEmbeds().get(0), processed)) {
+                    RequestBuffer.request(() -> events.get(event.getID()).edit(processed)).get();
+                    GECkO.logger.debug("Updating local event post: {}", event.getID());
+                } else {
+                    GECkO.logger.debug("Event post {} is up-to-date.", event.getID());
+                }
+            } else {
+                RequestBuffer.request(() -> eventChannel.sendMessage(processed)).get();
+                GECkO.logger.debug("Posting new event post: {}", event.getID());
+            }
+        });
     }
 
     /**

@@ -112,14 +112,18 @@ public class GECkO {
         try {
             // Login with bot token
             ClientBuilder builder = new ClientBuilder();
+
+            // Register default event handler
+            builder.registerListener(new EventHandler());
+
+            // Always try to reconnect
+            builder.setMaxReconnectAttempts(Integer.MAX_VALUE);
+
             if (token != null) {
                 discordClient = builder.withToken(token).login();
             } else {
                 discordClient = builder.withToken(ConfigManager.getProperties().getProperty("main_token")).login();
             }
-
-            // Register default event handler
-            discordClient.getDispatcher().registerListener(new EventHandler());
         } catch (DiscordException e) {
             logger.error("Failed to login: " + e.getErrorMessage());
         }
@@ -129,6 +133,10 @@ public class GECkO {
      * Called after the Discord API is ready to operate.
      */
     public static void postInit() {
+        // Stuff you want to initialize every reconnect..
+        // Set main channel
+        mainChannel = discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("main_mainChannelID")));
+
         // Stuff you only want to be initialized once
         if (!initOnce) {
             // Login
@@ -146,10 +154,6 @@ public class GECkO {
             // Start periodic news and event updates
             MediaSynchronizer.startPeriodicCheck();
         }
-
-        // Stuff you want to initialize every reconnect..
-        // Set main channel
-        mainChannel = discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("main_mainChannelID")));
 
         if (initOnce) {
             CommandUtils.respond(mainChannel, "**Reconnected!**");

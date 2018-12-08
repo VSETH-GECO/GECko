@@ -92,6 +92,11 @@ public class CommandHandler implements IListener<MessageReceivedEvent> {
      */
     @Override
     public void handle(sx.blah.discord.handle.impl.events.guild.channel.message.MessageReceivedEvent messageReceivedEvent) {
+        // Do nothing if bot is not ready to prevent exceptions
+        if (!GECkO.discordClient.isReady()) {
+            return;
+        }
+
         final IMessage finalMsg = messageReceivedEvent.getMessage();
         String text = finalMsg.getContent();
 

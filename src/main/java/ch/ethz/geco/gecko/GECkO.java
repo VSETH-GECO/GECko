@@ -48,6 +48,11 @@ public class GECkO {
     public static IChannel mainChannel;
 
     /**
+     * If the bot was initialized once.
+     */
+    private static boolean initOnce = false;
+
+    /**
      * The main logger of the bot.
      */
     public static final org.slf4j.Logger logger = LoggerFactory.getLogger(GECkO.class);
@@ -124,24 +129,35 @@ public class GECkO {
      * Called after the Discord API is ready to operate.
      */
     public static void postInit() {
-        // Login
-        gecoClient = new GECoClient(ConfigManager.getProperties().getProperty("geco_apiKey"));
+        // Stuff you only want to be initialized once
+        if (!initOnce) {
+            // Login
+            gecoClient = new GECoClient(ConfigManager.getProperties().getProperty("geco_apiKey"));
 
+            // Register all commands
+            CommandBank.registerCommands();
+
+            // Add shutdown hook
+            Runtime.getRuntime().addShutdownHook(new Thread(GECkO::preShutdown));
+
+            // Start to listen to commands after initializing everything else
+            discordClient.getDispatcher().registerListener(new CommandHandler());
+
+            // Start periodic news and event updates
+            MediaSynchronizer.startPeriodicCheck();
+        }
+
+        // Stuff you want to initialize every reconnect..
         // Set main channel
         mainChannel = discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("main_mainChannelID")));
 
-        // Register all commands
-        CommandBank.registerCommands();
+        if (initOnce) {
+            CommandUtils.respond(mainChannel, "**Reconnected!**");
+        } else {
+            CommandUtils.respond(mainChannel, "**Initialized!**");
+        }
 
-        // Add shutdown hook
-        Runtime.getRuntime().addShutdownHook(new Thread(GECkO::preShutdown));
-
-        // Start to listen to commands after initializing everything else
-        discordClient.getDispatcher().registerListener(new CommandHandler());
-
-        MediaSynchronizer.startPeriodicCheck();
-
-        CommandUtils.respond(mainChannel, "**Initialized!**");
+        initOnce = true;
     }
 
     /**

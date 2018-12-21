@@ -110,13 +110,13 @@
     </build>
 
     <repositories>
-        <repository> <!-- This repo fixes issues with transitive dependencies -->
-            <id>jcenter</id>
-            <url>http://jcenter.bintray.com</url>
-        </repository>
         <repository>
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
+        </repository>
+        <repository> <!-- This repo fixes issues with transitive dependencies -->
+            <id>jcenter</id>
+            <url>http://jcenter.bintray.com</url>
         </repository>
     </repositories>
 
@@ -136,9 +136,9 @@
         </dependency>
 
         <dependency>
-            <groupId>ch.ethz.geco</groupId>
+            <groupId>com.github.VSETH-GECO</groupId>
             <artifactId>GECo4J</artifactId>
-            <version>0.9.4</version>
+            <version>810d817345</version>
         </dependency>
 
         <!-- Maven and JGit used for the self-update process -->

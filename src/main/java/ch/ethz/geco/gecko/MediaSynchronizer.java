@@ -68,9 +68,15 @@ public class MediaSynchronizer {
         new Timer().schedule(new TimerTask() {
             @Override
             public void run() {
-                init();
-                loadNews();
-                loadEvents();
+                try {
+                    init();
+                    loadNews();
+                    loadEvents();
+                } catch (Exception e) {
+                    // Catch all exceptions to prevent the timer from stopping when an unchecked exception occurs
+                    e.printStackTrace();
+                }
+
             }
         }, 0, UPDATE_INTERVAL_MIN * 60000);
     }

@@ -31,6 +31,9 @@ import sx.blah.discord.util.MessageHistory;
 import sx.blah.discord.util.RequestBuffer;
 
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -54,7 +57,6 @@ public class MediaSynchronizer {
     private static final String BASE_URL = "https://geco.ethz.ch";
     private static final IChannel NEWS_CHANNEL = GECkO.discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("media_newsChannelID")));
     private static final IChannel EVENT_CHANNEL = GECkO.discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("media_eventChannelID")));
-    private static final Integer UPDATE_INTERVAL_MIN = 10;
 
     private static final ArrayList<Long> newsOrdering = new ArrayList<>();
     private static final LinkedHashMap<Long, IMessage> news = new LinkedHashMap<>();
@@ -62,23 +64,24 @@ public class MediaSynchronizer {
 
     private static final Pattern idPattern = Pattern.compile("^\\s*https?://(?:www.)?geco.ethz.ch/(?:news|events)/(\\d+)/?\\s*$");
 
+    private static final ScheduledExecutorService syncScheduler = Executors.newSingleThreadScheduledExecutor();
+    private static final Integer UPDATE_INTERVAL_MIN = 10;
+
+    private static void check() {
+        try {
+            init();
+            loadNews();
+            loadEvents();
+        } catch (Exception e) {
+            // Catch all exceptions to prevent the timer from stopping when an unchecked exception occurs
+            e.printStackTrace();
+        }
+    }
+
     public static void startPeriodicCheck() {
         GECkO.logger.info("Starting periodic media sync.");
 
-        new Timer().schedule(new TimerTask() {
-            @Override
-            public void run() {
-                try {
-                    init();
-                    loadNews();
-                    loadEvents();
-                } catch (Exception e) {
-                    // Catch all exceptions to prevent the timer from stopping when an unchecked exception occurs
-                    e.printStackTrace();
-                }
-
-            }
-        }, 0, UPDATE_INTERVAL_MIN * 60000);
+        syncScheduler.scheduleWithFixedDelay(MediaSynchronizer::check, 0, UPDATE_INTERVAL_MIN, TimeUnit.MINUTES);
     }
 
     private static EmbedObject getEmbedFromMedia(INews news) {

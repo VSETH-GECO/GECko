@@ -123,9 +123,9 @@
     <dependencies>
         <!-- Of course the discord lib -->
         <dependency>
-            <groupId>com.github.austinv11</groupId>
-            <artifactId>Discord4J</artifactId>
-            <version>2.10.0</version>
+            <groupId>com.discord4j</groupId>
+            <artifactId>discord4j-core</artifactId>
+            <version>3.0.0.M3-1</version>
         </dependency>
 
         <!-- Logging Framework -->
@@ -138,20 +138,7 @@
         <dependency>
             <groupId>com.github.VSETH-GECO</groupId>
             <artifactId>GECo4J</artifactId>
-            <version>810d817345</version>
-        </dependency>
-
-        <!-- Maven and JGit used for the self-update process -->
-        <dependency>
-            <groupId>org.eclipse.jgit</groupId>
-            <artifactId>org.eclipse.jgit</artifactId>
-            <version>4.10.0.201712302008-r</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.maven.shared</groupId>
-            <artifactId>maven-invoker</artifactId>
-            <version>3.0.0</version>
+            <version>eb2852a7c83cb4cea8c1e16d03bdbdd404cf9fa6</version>
         </dependency>
 
         <!-- JetBrains annotations for better control flow analysis -->
@@ -173,6 +160,12 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-collections4</artifactId>
             <version>4.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.6</version>
         </dependency>
 
         <dependency>

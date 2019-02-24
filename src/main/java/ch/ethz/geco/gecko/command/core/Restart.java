@@ -22,13 +22,9 @@ package ch.ethz.geco.gecko.command.core;
 import ch.ethz.geco.gecko.GECkO;
 import ch.ethz.geco.gecko.command.Command;
 import ch.ethz.geco.gecko.command.CommandUtils;
-import sx.blah.discord.handle.obj.IMessage;
-import sx.blah.discord.handle.obj.IVoiceChannel;
-import sx.blah.discord.util.DiscordException;
-import sx.blah.discord.util.RequestBuffer;
+import discord4j.core.object.entity.Message;
 
 import java.util.List;
-import java.util.Objects;
 
 public class Restart extends Command {
     public Restart() {
@@ -37,23 +33,12 @@ public class Restart extends Command {
     }
 
     @Override
-    public void execute(IMessage msg, List<String> args) {
-        CommandUtils.respond(msg, "**Restarting bot...**");
-        CommandUtils.deleteMessage(msg);
+    public void execute(Message msg, List<String> args) {
+        CommandUtils.respond(msg, "**Restarting bot...**").subscribe();
 
-        GECkO.logger.debug("[Restart] Getting connected voice channels...");
-        List<IVoiceChannel> connectedVoiceChannels = GECkO.discordClient.getConnectedVoiceChannels();
-        GECkO.logger.debug("[Restart] Leaving all connected voice channels...");
-        connectedVoiceChannels.stream().filter(voiceChannel -> Objects.equals(voiceChannel.getGuild().getLongID(), msg.getGuild().getLongID())).forEach(IVoiceChannel::leave);
-        GECkO.logger.debug("[Restart] Trying to shutdown bot:");
-        RequestBuffer.request(() -> { try {
-            GECkO.logger.debug("[Restart] - Logging out...");
-            GECkO.discordClient.logout();
-            GECkO.logger.debug("[Restart] - calling System.exit(0)...");
-            new Thread(() -> System.exit(0)).start();
-        } catch (DiscordException e) {
-            GECkO.logger.debug("[Restart] An error occured during restart.");
-            e.printStackTrace();
-        }});
+        GECkO.logger.debug("[Restart] - Logging out...");
+        GECkO.discordClient.logout();
+        GECkO.logger.debug("[Restart] - calling System.exit(0)...");
+        new Thread(() -> System.exit(0)).start();
     }
 }

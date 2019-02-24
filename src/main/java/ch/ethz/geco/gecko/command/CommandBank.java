@@ -19,10 +19,8 @@
 
 package ch.ethz.geco.gecko.command;
 
-import ch.ethz.geco.gecko.command.core.Avatar;
 import ch.ethz.geco.gecko.command.core.Ping;
 import ch.ethz.geco.gecko.command.core.Restart;
-import ch.ethz.geco.gecko.command.core.Update;
 import ch.ethz.geco.gecko.command.misc.Test;
 import ch.ethz.geco.gecko.command.misc.Whois;
 
@@ -35,10 +33,8 @@ public class CommandBank {
      */
     public static void registerCommands() {
         // Core
-        CommandRegistry.registerCommand(new Avatar());
         CommandRegistry.registerCommand(new Ping());
         CommandRegistry.registerCommand(new Restart());
-        CommandRegistry.registerCommand(new Update());
 
         // Misc
         CommandRegistry.registerCommand(new Whois());

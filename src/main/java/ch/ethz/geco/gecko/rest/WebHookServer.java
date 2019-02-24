@@ -19,16 +19,18 @@
 
 package ch.ethz.geco.gecko.rest;
 
+import ch.ethz.geco.g4j.internal.GECoUtils;
+import ch.ethz.geco.g4j.internal.json.EventObject;
+import ch.ethz.geco.g4j.internal.json.NewsObject;
 import ch.ethz.geco.gecko.ConfigManager;
 import ch.ethz.geco.gecko.ErrorHandler;
 import ch.ethz.geco.gecko.GECkO;
 import ch.ethz.geco.gecko.MediaSynchronizer;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import discord4j.core.object.data.stored.embed.EmbedBean;
 import fi.iki.elonen.NanoHTTPD;
 import org.apache.commons.io.IOUtils;
-import sx.blah.discord.api.internal.DiscordUtils;
-import sx.blah.discord.api.internal.json.objects.EmbedObject;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -139,7 +141,7 @@ public class WebHookServer extends NanoHTTPD {
             switch (endpoints[0]) {
                 case "news":
                     try {
-                        EmbedObject embed = DiscordUtils.MAPPER.readValue(content, EmbedObject.class);
+                        EmbedBean embed = GECoUtils.MAPPER.readValue(content, EmbedBean.class);
                         MediaSynchronizer.setNews(Integer.valueOf(endpoints[1]), embed);
                     } catch (JsonParseException | JsonMappingException e) {
                         return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", e.getMessage());
@@ -150,7 +152,7 @@ public class WebHookServer extends NanoHTTPD {
                     break;
                 case "events":
                     try {
-                        EmbedObject embed = DiscordUtils.MAPPER.readValue(content, EmbedObject.class);
+                        EmbedBean embed = GECoUtils.MAPPER.readValue(content, EmbedBean.class);
                         MediaSynchronizer.setEvent(Integer.valueOf(endpoints[1]), embed);
                     } catch (JsonParseException | JsonMappingException e) {
                         return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", e.getMessage());

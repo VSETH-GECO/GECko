@@ -20,7 +20,7 @@
 package ch.ethz.geco.gecko.command;
 
 import ch.ethz.geco.gecko.GECkO;
-import sx.blah.discord.handle.obj.IMessage;
+import discord4j.core.object.entity.Message;
 
 import java.util.List;
 
@@ -211,7 +211,7 @@ public abstract class Command {
      *
      * @param args the arguments passed to this command
      */
-    public void execute(IMessage msg, List<String> args) {
+    public void execute(Message msg, List<String> args) {
         GECkO.logger.warn("[Command] Command called without overriding execute method.");
         Thread.dumpStack();
     }
@@ -221,7 +221,7 @@ public abstract class Command {
      *
      * @param msg the message which triggered this command
      */
-    public void printUsage(IMessage msg) {
+    public void printUsage(Message msg) {
         CommandUtils.respond(msg, "**Usage:** `!" + this.getNames()[0] + " " + this.getParams() + "`");
     }
 }

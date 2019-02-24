@@ -19,33 +19,48 @@
 
 package ch.ethz.geco.gecko;
 
-import ch.ethz.geco.g4j.impl.GECoClient;
-import ch.ethz.geco.g4j.obj.IGECoClient;
+import ch.ethz.geco.g4j.impl.DefaultGECoClient;
+import ch.ethz.geco.g4j.obj.GECoClient;
 import ch.ethz.geco.gecko.command.CommandBank;
 import ch.ethz.geco.gecko.command.CommandHandler;
 import ch.ethz.geco.gecko.command.CommandUtils;
 import ch.ethz.geco.gecko.rest.WebHookServer;
+import discord4j.core.DiscordClient;
+import discord4j.core.DiscordClientBuilder;
+import discord4j.core.event.EventDispatcher;
+import discord4j.core.event.domain.lifecycle.ReadyEvent;
+import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.object.entity.Guild;
+import discord4j.core.object.entity.TextChannel;
+import discord4j.core.object.util.Snowflake;
 import org.slf4j.LoggerFactory;
 import sx.blah.discord.api.ClientBuilder;
 import sx.blah.discord.api.IDiscordClient;
 import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.util.DiscordException;
 
+import javax.xml.soap.Text;
+
 public class GECkO {
     /**
      * The Discord client used by the bot.
      */
-    public static IDiscordClient discordClient;
+    public static DiscordClient discordClient;
 
     /**
      * The GECo client used by the bot.
      */
-    public static IGECoClient gecoClient;
+    public static GECoClient gecoClient;
 
     /**
      * The main channel where the bot posts debug/testing stuff.
      */
-    public static IChannel mainChannel;
+    public static TextChannel mainChannel;
+
+    /**
+     * The main guild where the bot is.
+     */
+    public static Guild mainGuild;
 
     /**
      * If the bot was initialized once.
@@ -106,41 +121,38 @@ public class GECkO {
         if (prefix != null) {
             CommandHandler.setDefaultPrefix(prefix);
         } else {
-            CommandHandler.setDefaultPrefix(ConfigManager.getProperties().getProperty("main_defaultPrefix"));
+            CommandHandler.setDefaultPrefix(ConfigManager.getProperty("main_defaultPrefix"));
         }
 
-        try {
-            // Login with bot token
-            ClientBuilder builder = new ClientBuilder();
+        DiscordClientBuilder builder = new DiscordClientBuilder(ConfigManager.getProperty("main_token"));
+        discordClient = builder.build();
 
-            // Register default event handler
-            builder.registerListener(new EventHandler());
+        EventDispatcher eventDispatcher = discordClient.getEventDispatcher();
 
-            // Always try to reconnect
-            builder.setMaxReconnectAttempts(Integer.MAX_VALUE);
+        eventDispatcher.on(ReadyEvent.class).subscribe(readyEvent -> {
+            mainChannel = discordClient.getChannelById(Snowflake.of(ConfigManager.getProperties().getProperty("main_mainChannelID")))
+                    .ofType(TextChannel.class).block();
 
-            if (token != null) {
-                discordClient = builder.withToken(token).login();
-            } else {
-                discordClient = builder.withToken(ConfigManager.getProperties().getProperty("main_token")).login();
+            if (mainChannel != null) {
+                mainGuild = mainChannel.getGuild().block();
+
+                postInit();
             }
-        } catch (DiscordException e) {
-            logger.error("Failed to login: " + e.getErrorMessage());
-        }
+        });
+
     }
 
     /**
      * Called after the Discord API is ready to operate.
      */
     public static void postInit() {
-        // Stuff you want to initialize every reconnect..
-        // Set main channel
-        mainChannel = discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("main_mainChannelID")));
+        // Listen to messages
+        discordClient.getEventDispatcher().on(MessageCreateEvent.class).subscribe(CommandHandler::handle);
 
         // Stuff you only want to be initialized once
         if (!initOnce) {
             // Login
-            gecoClient = new GECoClient(ConfigManager.getProperties().getProperty("geco_apiKey"));
+            gecoClient = new DefaultGECoClient(ConfigManager.getProperties().getProperty("geco_apiKey"));
 
             // Register all commands
             CommandBank.registerCommands();

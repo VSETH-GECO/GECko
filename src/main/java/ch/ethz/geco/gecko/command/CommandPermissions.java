@@ -19,9 +19,10 @@
 
 package ch.ethz.geco.gecko.command;
 
-import sx.blah.discord.handle.obj.IGuild;
-import sx.blah.discord.handle.obj.IRole;
-import sx.blah.discord.handle.obj.IUser;
+import ch.ethz.geco.gecko.GECkO;
+import discord4j.core.object.entity.Member;
+import discord4j.core.object.entity.User;
+import discord4j.core.object.util.Snowflake;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -31,34 +32,36 @@ import java.util.Set;
  * TODO: somehow add method to check for discord permissions in addition to roles
  */
 public class CommandPermissions {
-    private Set<Long> permittedRoleIDs = new HashSet<>();
+    private Set<Snowflake> permittedRoleIDs = new HashSet<>();
 
     /**
      * Returns a Set of permitted role ID's.
      * @return the permitted role ID's
      */
-    public Set<Long> getPermittedRoleIDs() {
+    public Set<Snowflake> getPermittedRoleIDs() {
         return permittedRoleIDs;
     }
 
     /**
-     * Return whether or not a user is permitted to execute a command.
-     *
-     * @param guild the guild where to check the roles
-     * @param user  the user to check
-     * @return whether or not a user is permitted
+     * Checks if a member is permitted (has one the roles specified as permitted in the command)
+     * @param member The member to check
+     * @return Whether or not a member is permitted.
      */
-    public boolean isUserPermitted(IGuild guild, IUser user) {
+    public boolean isMemberPermitted(Member member) {
         if (permittedRoleIDs.isEmpty()) {
             return true;
         }
 
-        for (IRole userRole : user.getRolesForGuild(guild)) {
-            if (permittedRoleIDs.contains(userRole.getLongID())) {
+        for (Snowflake userRole : member.getRoleIds()) {
+            if (permittedRoleIDs.contains(userRole)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    public boolean isUserPermitted(User user) {
+        return isMemberPermitted(GECkO.mainGuild.getMemberById(user.getId()).block());
     }
 }

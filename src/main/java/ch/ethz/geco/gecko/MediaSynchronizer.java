@@ -19,18 +19,19 @@
 
 package ch.ethz.geco.gecko;
 
-import ch.ethz.geco.g4j.obj.IEvent;
-import ch.ethz.geco.g4j.obj.INews;
-import sx.blah.discord.api.ClientBuilder;
-import sx.blah.discord.api.internal.json.objects.EmbedObject;
-import sx.blah.discord.handle.obj.IChannel;
-import sx.blah.discord.handle.obj.IEmbed;
-import sx.blah.discord.handle.obj.IMessage;
-import sx.blah.discord.util.EmbedBuilder;
-import sx.blah.discord.util.MessageHistory;
-import sx.blah.discord.util.RequestBuffer;
+import ch.ethz.geco.g4j.obj.Event;
+import ch.ethz.geco.g4j.obj.News;
+import discord4j.core.object.Embed;
+import discord4j.core.object.data.stored.embed.EmbedBean;
+import discord4j.core.object.data.stored.embed.EmbedImageBean;
+import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.TextChannel;
+import discord4j.core.object.util.Snowflake;
+import discord4j.core.spec.EmbedCreateSpec;
 
+import java.awt.*;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -55,12 +56,12 @@ import java.util.regex.Pattern;
  */
 public class MediaSynchronizer {
     private static final String BASE_URL = "https://geco.ethz.ch";
-    private static final IChannel NEWS_CHANNEL = GECkO.discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("media_newsChannelID")));
-    private static final IChannel EVENT_CHANNEL = GECkO.discordClient.getChannelByID(Long.valueOf(ConfigManager.getProperties().getProperty("media_eventChannelID")));
+    private static final TextChannel NEWS_CHANNEL = GECkO.discordClient.getChannelById(Snowflake.of(ConfigManager.getProperties().getProperty("media_newsChannelID"))).ofType(TextChannel.class).block();
+    private static final TextChannel EVENT_CHANNEL = GECkO.discordClient.getChannelById(Snowflake.of(ConfigManager.getProperties().getProperty("media_eventChannelID"))).ofType(TextChannel.class).block();
 
     private static final ArrayList<Long> newsOrdering = new ArrayList<>();
-    private static final LinkedHashMap<Long, IMessage> news = new LinkedHashMap<>();
-    private static final LinkedHashMap<Long, IMessage> events = new LinkedHashMap<>();
+    private static final LinkedHashMap<Long, Message> news = new LinkedHashMap<>();
+    private static final LinkedHashMap<Long, Message> events = new LinkedHashMap<>();
 
     private static final Pattern idPattern = Pattern.compile("^\\s*https?://(?:www.)?geco.ethz.ch/(?:news|events)/(\\d+)/?\\s*$");
 
@@ -69,6 +70,9 @@ public class MediaSynchronizer {
 
     private static void check() {
         try {
+            if (!GECkO.discordClient.isConnected())
+                return;
+
             init();
             loadNews();
             loadEvents();
@@ -84,16 +88,14 @@ public class MediaSynchronizer {
         syncScheduler.scheduleWithFixedDelay(MediaSynchronizer::check, 0, UPDATE_INTERVAL_MIN, TimeUnit.MINUTES);
     }
 
-    private static EmbedObject getEmbedFromMedia(INews news) {
-        return new EmbedObject(news.getTitle(), "rich", news.getDescription(), news.getURL(), null,
-                0x7289DA, new EmbedObject.FooterObject(news.getFooter(), null, null),
-                null, null, null, null, new EmbedObject.AuthorObject(news.getAuthorName(),
-                news.getAuthorURL(), news.getAuthorIconURL(), null), null);
+    private static EmbedCreateSpec setEmbedFromMedia(EmbedCreateSpec embed, News news) {
+        return embed.setTitle(news.getTitle()).setDescription(news.getDescription()).setUrl(news.getURL())
+                .setColor(new Color(0x7289DA)).setFooter(news.getFooter(), null)
+                .setAuthor(news.getAuthorName(), news.getAuthorURL(), news.getAuthorIconURL());
     }
 
-    private static EmbedObject getEmbedFromMedia(IEvent event) {
-        return new EmbedObject(event.getTitle(), "rich", event.getDescription(), event.getURL(), null,
-                0x7289DA, null, null, null, null, null, null, null);
+    private static EmbedCreateSpec setEmbedFromMedia(EmbedCreateSpec embed, Event event) {
+        return embed.setTitle(event.getTitle()).setDescription(event.getDescription()).setUrl(event.getURL()).setColor(new Color(0x7289DA));
     }
 
     /**
@@ -103,16 +105,16 @@ public class MediaSynchronizer {
      * @param message The message which possibly contains a news or event post.
      * @return The ID of the news or event post, if existing.
      */
-    private static Long getPostID(IMessage message) {
-        List<IEmbed> embeds = message.getEmbeds();
+    private static Long getPostID(Message message) {
+        List<Embed> embeds = message.getEmbeds();
 
         // A valid news or event entry has exactly one embed.
-        if (embeds == null || embeds.size() != 1) {
+        if (embeds.size() != 1 || !embeds.get(0).getUrl().isPresent()) {
             return null;
         }
 
         // Return if the url of the embed matches with the url of a news or event entry.
-        Matcher matcher = idPattern.matcher(embeds.get(0).getUrl());
+        Matcher matcher = idPattern.matcher(embeds.get(0).getUrl().get());
         if (matcher.matches()) {
             return Long.valueOf(matcher.group(1));
         }
@@ -124,39 +126,39 @@ public class MediaSynchronizer {
      * Reads in all existing news and event entries and removes invalid entries.
      */
     public static void init() {
-        MessageHistory newsMessages = NEWS_CHANNEL.getMessageHistory(ClientBuilder.DEFAULT_MESSAGE_CACHE_LIMIT);
-        MessageHistory eventMessages = EVENT_CHANNEL.getMessageHistory(ClientBuilder.DEFAULT_MESSAGE_CACHE_LIMIT);
-
-        // Sort by timestamp for sanity check
-        newsMessages.sort(Comparator.comparing(iMessage -> iMessage.getTimestamp().toEpochMilli()));
-        eventMessages.sort(Comparator.comparing(iMessage -> iMessage.getTimestamp().toEpochMilli()));
+        if (NEWS_CHANNEL == null || EVENT_CHANNEL == null)
+            return;
 
         // Reinitialize ID to post mappings
         MediaSynchronizer.news.clear();
         MediaSynchronizer.newsOrdering.clear();
-        newsMessages.stream().filter(message -> {
-            Long postID = getPostID(message);
-            // If a message has an ID, put it into the mapping
-            if (postID != null) {
-                newsOrdering.add(postID);
-                MediaSynchronizer.news.put(postID, message);
-            }
 
-            return postID == null;
-            // Otherwise, delete it.
-        }).forEach(IMessage::delete);
+        if (NEWS_CHANNEL.getLastMessageId().isPresent()) {
+            NEWS_CHANNEL.getMessagesBefore(NEWS_CHANNEL.getLastMessageId().get()).take(30).filter(message -> {
+                Long postID = getPostID(message);
+                // If a message has an ID, put it into the mapping
+                if (postID != null) {
+                    newsOrdering.add(postID);
+                    MediaSynchronizer.news.put(postID, message);
+                }
 
-        MediaSynchronizer.events.clear();
-        eventMessages.stream().filter(message -> {
-            Long postID = getPostID(message);
-            // If a message has an ID, put it into the mapping
-            if (postID != null) {
-                MediaSynchronizer.events.put(postID, message);
-            }
+                return postID == null;
+                // Otherwise, delete it.
+            }).map(message -> message.delete().block()).then().block();
+        }
 
-            return postID == null;
-            // Otherwise, delete it.
-        }).forEach(msg -> RequestBuffer.request(msg::delete).get());
+        if (EVENT_CHANNEL.getLastMessageId().isPresent()) {
+            EVENT_CHANNEL.getMessagesBefore(EVENT_CHANNEL.getLastMessageId().get()).take(30).filter(message -> {
+                Long postID = getPostID(message);
+                // If a message has an ID, put it into the mapping
+                if (postID != null) {
+                    MediaSynchronizer.events.put(postID, message);
+                }
+
+                return postID == null;
+                // Otherwise, delete it.
+            }).map(message -> message.delete().block()).then().block();
+        }
 
         GECkO.logger.debug("Found {} local news and {} local event posts.", news.size(), events.size());
 
@@ -172,9 +174,12 @@ public class MediaSynchronizer {
     }
 
     public static void loadNews() {
+        if (NEWS_CHANNEL == null || EVENT_CHANNEL == null)
+            return;
+
         GECkO.logger.info("Updating news channel.");
 
-        List<INews> webNews = GECkO.gecoClient.getNews(1);
+        List<News> webNews = GECkO.gecoClient.getNews(1);
         if (webNews == null) {
             return;
         }
@@ -187,14 +192,14 @@ public class MediaSynchronizer {
         }
 
         // Sort ascending for sanity check
-        webNews.sort(Comparator.comparing(INews::getPublishedAt));
+        webNews.sort(Comparator.comparing(News::getPublishedAt));
 
         // Store all available news post IDs
         List<Long> webIDs = new ArrayList<>();
         webNews.forEach(post -> webIDs.add(post.getID()));
 
         // Remove drafts from web news
-        webNews.removeIf(INews::isDraft);
+        webNews.removeIf(News::isDraft);
 
         // Remove all posts missing remotely after the first web post
         GECkO.logger.debug("Deleting drafts and deleted posts.");
@@ -202,7 +207,7 @@ public class MediaSynchronizer {
             news.forEach((id, post) -> {
                 if (newsOrdering.indexOf(id) >= newsOrdering.indexOf(webIDs.get(0)) && !webIDs.contains(id)) {
                     GECkO.logger.debug("Deleting news post: {}", id);
-                    RequestBuffer.request(post::delete).get();
+                    post.delete().block();
                 }
             });
 
@@ -212,10 +217,10 @@ public class MediaSynchronizer {
         // Check proper ordering of local posts
         // TODO: Might break if posts are missing locally in the middle
         GECkO.logger.debug("Checking for wrongly ordered posts.");
-        Iterator<Map.Entry<Long, IMessage>> localNewsIterator = news.entrySet().iterator();
+        Iterator<Map.Entry<Long, Message>> localNewsIterator = news.entrySet().iterator();
         boolean foundFirst = false;
         while (localNewsIterator.hasNext() && !webIDs.isEmpty()) {
-            Map.Entry<Long, IMessage> next = localNewsIterator.next();
+            Map.Entry<Long, Message> next = localNewsIterator.next();
 
             if (!foundFirst && next.getKey().equals(webIDs.get(0))) {
                 webIDs.remove(0);
@@ -226,7 +231,7 @@ public class MediaSynchronizer {
             if (foundFirst) {
                 if (!next.getKey().equals(webIDs.get(0))) {
                     GECkO.logger.debug("News post {} is wrongly ordered, removing...", next.getKey());
-                    RequestBuffer.request(() -> next.getValue().delete()).get();
+                    next.getValue().delete().block();
                     localNewsIterator.remove();
                 } else {
                     webIDs.remove(0);
@@ -235,15 +240,15 @@ public class MediaSynchronizer {
         }
 
         boolean stay = false;
-        Map.Entry<Long, IMessage> nextLocal = null;
+        Map.Entry<Long, Message> nextLocal = null;
         localNewsIterator = news.entrySet().iterator();
-        for (INews nextWeb : webNews) {
+        for (News nextWeb : webNews) {
             GECkO.logger.debug("Searching local news post: {}", nextWeb.getID());
 
             // If there are no more local posts, but there are still web posts missing.
             if (!localNewsIterator.hasNext()) {
                 GECkO.logger.debug("Posting new news post: {}", nextWeb.getID());
-                RequestBuffer.request(() -> NEWS_CHANNEL.sendMessage(processEmbed(getEmbedFromMedia(nextWeb)))).get();
+                NEWS_CHANNEL.createMessage(messageCreateSpec -> messageCreateSpec.setEmbed(embedCreateSpec -> setEmbedFromMedia(embedCreateSpec, nextWeb))).subscribe();
             }
 
             while (localNewsIterator.hasNext() || stay) {
@@ -259,10 +264,8 @@ public class MediaSynchronizer {
                     GECkO.logger.debug("Checking local news post: {}", nextLocal.getKey());
                     EmbedObject processed = processEmbed(getEmbedFromMedia(nextWeb));
                     if (!embedEqualsEmbedObject(nextLocal.getValue().getEmbeds().get(0), processed)) {
-                        Map.Entry<Long, IMessage> finalNextLocal = nextLocal;
-                        RequestBuffer.request(() -> {
-                            finalNextLocal.getValue().edit(processed);
-                        }).get();
+                        nextLocal.getValue().edit(messageEditSpec -> messageEditSpec.setContent(null)
+                                .setEmbed(embedCreateSpec -> setEmbedFromMedia(embedCreateSpec, nextWeb))).subscribe();
 
                         GECkO.logger.debug("Updating local news post: {}", nextLocal.getKey());
                     } else {
@@ -282,7 +285,7 @@ public class MediaSynchronizer {
     public static void loadEvents() {
         GECkO.logger.info("Updating events channel.");
 
-        List<IEvent> webEvents = GECkO.gecoClient.getEvents(1);
+        List<Event> webEvents = GECkO.gecoClient.getEvents(1);
         if (webEvents == null) {
             return;
         }
@@ -296,16 +299,16 @@ public class MediaSynchronizer {
         GECkO.logger.debug("Deleting deleted events.");
         events.forEach((id, message) -> {
             if (!eventIDs.contains(id)) {
-                RequestBuffer.request(message::delete).get();
+                message.delete().block();
             }
         });
         events.entrySet().removeIf(entry -> !eventIDs.contains(entry.getKey()));
 
         // Check proper ordering of local posts
         GECkO.logger.debug("Checking for wrongly ordered posts.");
-        Iterator<Map.Entry<Long, IMessage>> localEventsIterator = events.entrySet().iterator();
+        Iterator<Map.Entry<Long, Message>> localEventsIterator = events.entrySet().iterator();
         while (localEventsIterator.hasNext() && !eventIDs.isEmpty()) {
-            Map.Entry<Long, IMessage> next = localEventsIterator.next();
+            Map.Entry<Long, Message> next = localEventsIterator.next();
 
             if (!next.getKey().equals(eventIDs.get(0))) {
                 GECkO.logger.info("Found order inconsistencies in events channel, wiping...");
@@ -341,7 +344,7 @@ public class MediaSynchronizer {
      * @param message the embed to update or add
      * @param raw     if it should be parsed for discord or not
      */
-    private static void setNews(long id, EmbedObject message, boolean raw) {
+    private static void setNews(long id, EmbedBean message, boolean raw) {
         if (raw) {
             processEmbed(message);
         }
@@ -363,7 +366,7 @@ public class MediaSynchronizer {
      * @param id      the ID of the news post
      * @param message the embed to update or add
      */
-    public static void setNews(int id, EmbedObject message) {
+    public static void setNews(int id, EmbedBean message) {
         setNews(id, message, true);
     }
 
@@ -374,7 +377,7 @@ public class MediaSynchronizer {
      * @param message the embed to update or add
      * @param raw     if it should be parsed for discord or not
      */
-    private static void setEvent(long id, EmbedObject message, boolean raw) {
+    private static void setEvent(long id, EmbedBean message, boolean raw) {
         if (raw) {
             processEmbed(message);
         }
@@ -392,7 +395,7 @@ public class MediaSynchronizer {
      * @param id      the ID of the event post
      * @param message the embed to update or add
      */
-    public static void setEvent(long id, EmbedObject message) {
+    public static void setEvent(long id, EmbedBean message) {
         setEvent(id, message, true);
     }
 
@@ -430,7 +433,7 @@ public class MediaSynchronizer {
      * @param raw the embed with unprocessed description
      * @return the processed embed
      */
-    private static EmbedObject processEmbed(EmbedObject raw) {
+    private static EmbedBean processEmbed(EmbedBean raw) {
         /* Markdown Processing:
          * - Emphasis:  supported
          * ->Header:    not supported and has to be parsed
@@ -450,7 +453,7 @@ public class MediaSynchronizer {
          * ->IFrame:            not supported but has to be parsed
          */
 
-        String description = raw.description;
+        String description = raw.getDescription();
 
         /* Header Parsing:
          * #      -> **__H1__**
@@ -488,9 +491,9 @@ public class MediaSynchronizer {
 
         // Search for an image to use as message image
         if (imageMatcher.find()) {
-            EmbedObject.ImageObject imageObject = new EmbedObject.ImageObject();
-            imageObject.url = imageMatcher.group(1);
-            raw.image = imageObject;
+            EmbedImageBean imageObject = new EmbedImageBean();
+            imageObject.setUrl(imageMatcher.group(1));
+            raw.setImage(imageObject);
         }
 
         // Replace all nested image links with normal ones
@@ -566,33 +569,33 @@ public class MediaSynchronizer {
         }
 
         // Extend author icon URL
-        if (raw.author != null) {
-            raw.author.icon_url = BASE_URL + raw.author.icon_url;
+        if (raw.getAuthor() != null) {
+            raw.getAuthor().setIconUrl(BASE_URL + raw.getAuthor().getIconUrl());
         }
 
         // Trimming
-        raw.description = description.trim();
-        raw.title = raw.title.trim();
-        raw.url = raw.url.trim();
+        raw.setDescription(description.trim());
+        raw.setTitle(raw.getTitle().trim());
+        raw.setUrl(raw.getUrl().trim());
 
-        if (raw.author != null) {
-            raw.author.icon_url = raw.author.icon_url.trim();
-            raw.author.name = raw.author.name.trim();
-            raw.author.url = raw.author.url.trim();
+        if (raw.getAuthor() != null) {
+            raw.getAuthor().setIconUrl(raw.getAuthor().getIconUrl().trim());
+            raw.getAuthor().setName(raw.getAuthor().getName().trim());
+            raw.getAuthor().setUrl(raw.getAuthor().getUrl().trim());
         }
 
-        if (raw.footer != null) {
-            raw.footer.text = raw.footer.text.trim();
+        if (raw.getFooter() != null) {
+            raw.getFooter().setText(raw.getFooter().getText().trim());
         }
 
-        if (raw.image != null) {
-            raw.image.url = raw.image.url.trim();
+        if (raw.getImage() != null) {
+            raw.getImage().setUrl(raw.getImage().getUrl().trim());
         }
 
         // Description length trimming
-        if (raw.description.length() > EmbedBuilder.DESCRIPTION_CONTENT_LIMIT) {
-            String trimString = "...\n\n[Read more](" + raw.url + ")";
-            raw.description = raw.description.substring(0, EmbedBuilder.DESCRIPTION_CONTENT_LIMIT - trimString.length()) + trimString;
+        if (raw.getDescription().length() > Embed.MAX_DESCRIPTION_LENGTH) {
+            String trimString = "...\n\n[Read more](" + raw.getUrl() + ")";
+            raw.setDescription(raw.getDescription().substring(0, Embed.MAX_DESCRIPTION_LENGTH - trimString.length()) + trimString);
         }
 
         return raw;

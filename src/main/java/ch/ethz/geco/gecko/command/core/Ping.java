@@ -21,7 +21,7 @@ package ch.ethz.geco.gecko.command.core;
 
 import ch.ethz.geco.gecko.command.Command;
 import ch.ethz.geco.gecko.command.CommandUtils;
-import sx.blah.discord.handle.obj.IMessage;
+import discord4j.core.object.entity.Message;
 
 import java.time.ZoneOffset;
 import java.util.List;
@@ -36,11 +36,9 @@ public class Ping extends Command {
     }
 
     @Override
-    public void execute(IMessage msg, List<String> args) {
-        IMessage pongMsg = CommandUtils.respond(msg, "Pong!");
-
-        long millis = pongMsg.getTimestamp().atZone(ZoneOffset.UTC).toInstant().toEpochMilli() - msg.getTimestamp().atZone(ZoneOffset.UTC).toInstant().toEpochMilli();
-
-        CommandUtils.editMessage(pongMsg, "Pong! <" + millis + "ms>");
+    public void execute(Message msg, List<String> args) {
+        CommandUtils.respond(msg, "Pong!").subscribe(message -> CommandUtils.editMessage(message, "Pong! <" +
+                (message.getTimestamp().atZone(ZoneOffset.UTC).toInstant().toEpochMilli() - msg.getTimestamp().atZone(ZoneOffset.UTC).toInstant().toEpochMilli()) +
+                ">").subscribe());
     }
 }

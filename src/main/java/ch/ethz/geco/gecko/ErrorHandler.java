@@ -19,14 +19,9 @@
 
 package ch.ethz.geco.gecko;
 
-import sx.blah.discord.util.DiscordException;
-import sx.blah.discord.util.EmbedBuilder;
-import sx.blah.discord.util.MissingPermissionsException;
-import sx.blah.discord.util.RequestBuffer;
-
 import java.awt.*;
-import java.util.*;
 import java.util.List;
+import java.util.*;
 
 /**
  * Provides a function to handle errors in a good readable way. Additionally it stores exceptions it couldn't
@@ -98,17 +93,16 @@ public class ErrorHandler {
                         .append("(").append(traceElement.getFileName()).append(":").append(traceElement.getLineNumber()).append(")").append("\n");
             }
 
-            EmbedBuilder embedBuilder = new EmbedBuilder().withColor(new Color(255, 0, 0))
-                    .withTitle(e.getClass().getSimpleName() + ": " + e.getMessage()).withDescription(builder.toString());
-
-            if (GECkO.discordClient.isReady()) {
-                try {
-                    RequestBuffer.request(() -> GECkO.mainChannel.sendMessage(embedBuilder.build()));
-                } catch (MissingPermissionsException | DiscordException err) {
-                    e.printStackTrace();
-                    System.out.println("------------------------------");
-                    err.printStackTrace();
-                }
+            if (GECkO.discordClient.isConnected()) {
+                GECkO.mainChannel.createMessage(messageCreateSpec -> messageCreateSpec.setEmbed(embedCreateSpec -> embedCreateSpec
+                        .setColor(new Color(255, 0, 0))
+                        .setTitle(e.getClass().getSimpleName() + ": " + e.getMessage())
+                        .setDescription(builder.toString())))
+                        .doOnError(err -> {
+                            e.printStackTrace();
+                            System.out.println("------------------------------");
+                            err.printStackTrace();
+                        }).subscribe();
             } else {
                 exceptionBuffer.offer(e);
                 startTimer();

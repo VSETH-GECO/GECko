@@ -19,14 +19,12 @@
 
 package ch.ethz.geco.gecko.command;
 
-import ch.ethz.geco.gecko.ErrorHandler;
-import ch.ethz.geco.gecko.GECkO;
-import sx.blah.discord.api.internal.json.objects.EmbedObject;
-import sx.blah.discord.handle.obj.IChannel;
-import sx.blah.discord.handle.obj.IMessage;
-import sx.blah.discord.util.DiscordException;
-import sx.blah.discord.util.MissingPermissionsException;
-import sx.blah.discord.util.RequestBuffer;
+import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.MessageChannel;
+import discord4j.core.spec.EmbedCreateSpec;
+import reactor.core.publisher.Mono;
+
+import java.util.function.Consumer;
 
 public class CommandUtils {
     /**
@@ -36,7 +34,7 @@ public class CommandUtils {
      * @param text the response text
      * @return the response message
      */
-    public static IMessage respond(IMessage msg, String text) {
+    public static Mono<Message> respond(Message msg, String text) {
         return respond(msg.getChannel(), text);
     }
 
@@ -47,7 +45,7 @@ public class CommandUtils {
      * @param embed the embed to send
      * @return the response message
      */
-    public static IMessage respond(IMessage msg, EmbedObject embed) {
+    public static Mono<Message> respond(Message msg, Consumer<EmbedCreateSpec> embed) {
         return respond(msg.getChannel(), embed);
     }
 
@@ -58,20 +56,8 @@ public class CommandUtils {
      * @param text    the response text
      * @return the response message
      */
-    public static IMessage respond(IChannel channel, String text) {
-        return RequestBuffer.request(() -> {
-            try {
-                return channel.sendMessage(text);
-            } catch (MissingPermissionsException e) {
-                GECkO.logger.error("[CommandUtils] Missing permissions to respond to command message.");
-                ErrorHandler.handleError(e);
-            } catch (DiscordException e) {
-                GECkO.logger.error("[CommandUtils] Could not respond to command message: " + e.getErrorMessage());
-                ErrorHandler.handleError(e);
-            }
-
-            return null;
-        }).get();
+    public static Mono<Message> respond(Mono<MessageChannel> channel, String text) {
+        return channel.flatMap(messageChannel -> messageChannel.createMessage(text));
     }
 
     /**
@@ -81,20 +67,8 @@ public class CommandUtils {
      * @param embed   the embed to send
      * @return the response message
      */
-    public static IMessage respond(IChannel channel, EmbedObject embed) {
-        return RequestBuffer.request(() -> {
-            try {
-                return channel.sendMessage(embed);
-            } catch (MissingPermissionsException e) {
-                GECkO.logger.error("[CommandUtils] Missing permissions to respond to command message.");
-                ErrorHandler.handleError(e);
-            } catch (DiscordException e) {
-                GECkO.logger.error("[CommandUtils] Could not respond to command message: " + e.getErrorMessage());
-                ErrorHandler.handleError(e);
-            }
-
-            return null;
-        }).get();
+    public static Mono<Message> respond(Mono<MessageChannel> channel, Consumer<EmbedCreateSpec> embed) {
+        return channel.flatMap(messageChannel -> messageChannel.createMessage(messageCreateSpec -> messageCreateSpec.setEmbed(embed)));
     }
 
     /**
@@ -104,20 +78,8 @@ public class CommandUtils {
      * @param text the new message text
      * @return the edited message
      */
-    public static IMessage editMessage(IMessage msg, String text) {
-        return RequestBuffer.request(() -> {
-            try {
-                return msg.edit(text);
-            } catch (MissingPermissionsException e) {
-                GECkO.logger.error("[CommandUtils] Missing permissions to edit message.");
-                ErrorHandler.handleError(e);
-            } catch (DiscordException e) {
-                GECkO.logger.error("[CommandUtils] Could not edit message: " + e.getErrorMessage());
-                ErrorHandler.handleError(e);
-            }
-
-            return null;
-        }).get();
+    public static Mono<Message> editMessage(Message msg, String text) {
+        return msg.edit(messageEditSpec -> messageEditSpec.setContent(text));
     }
 
     /**
@@ -127,20 +89,8 @@ public class CommandUtils {
      * @param embed the new embed
      * @return the edited message
      */
-    public static IMessage editMessage(IMessage msg, EmbedObject embed) {
-        return RequestBuffer.request(() -> {
-            try {
-                return msg.edit(embed);
-            } catch (MissingPermissionsException e) {
-                GECkO.logger.error("[CommandUtils] Missing permissions to edit message.");
-                ErrorHandler.handleError(e);
-            } catch (DiscordException e) {
-                GECkO.logger.error("[CommandUtils] Could not edit message: " + e.getErrorMessage());
-                ErrorHandler.handleError(e);
-            }
-
-            return null;
-        }).get();
+    public static Mono<Message> editMessage(Message msg, Consumer<EmbedCreateSpec> embed) {
+        return msg.edit(messageEditSpec -> messageEditSpec.setEmbed(embed));
     }
 
     /**
@@ -148,19 +98,7 @@ public class CommandUtils {
      *
      * @param msg the message which triggered this command
      */
-    public static void deleteMessage(IMessage msg) {
-        if (!msg.getChannel().isPrivate()) {
-            RequestBuffer.request(() -> {
-                try {
-                    msg.delete();
-                } catch (MissingPermissionsException e) {
-                    GECkO.logger.error("[CommandUtils] Missing permissions to delete command message.");
-                    ErrorHandler.handleError(e);
-                } catch (DiscordException e) {
-                    GECkO.logger.error("[CommandUtils] Could not delete command message: " + e.getErrorMessage());
-                    ErrorHandler.handleError(e);
-                }
-            });
-        }
+    public static Mono<Void> deleteMessage(Message msg) {
+        return msg.delete();
     }
 }

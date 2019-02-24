@@ -21,22 +21,18 @@ package ch.ethz.geco.gecko.command;
 
 import ch.ethz.geco.gecko.ErrorHandler;
 import ch.ethz.geco.gecko.GECkO;
+import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.object.data.stored.MessageBean;
+import discord4j.core.object.entity.Message;
 import org.apache.commons.text.StrTokenizer;
 import org.jetbrains.annotations.Contract;
-import sx.blah.discord.api.events.IListener;
-import sx.blah.discord.handle.impl.events.guild.channel.message.MessageReceivedEvent;
-import sx.blah.discord.handle.impl.obj.Embed;
-import sx.blah.discord.handle.impl.obj.Message;
-import sx.blah.discord.handle.obj.IMessage;
-import sx.blah.discord.util.DiscordException;
-import sx.blah.discord.util.RequestBuffer;
+import reactor.core.publisher.Mono;
 
-import java.util.ArrayList;
+import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
-public class CommandHandler implements IListener<MessageReceivedEvent> {
+public class CommandHandler {
     /**
      * The current default command prefix if no prefix was defined inside the command.
      */
@@ -62,47 +58,44 @@ public class CommandHandler implements IListener<MessageReceivedEvent> {
      * @param msg the message where to inject the private channel
      * @return the message after injection
      */
-    private static IMessage injectPrivateChannel(IMessage msg) {
-        return RequestBuffer.request(() -> {
+    private static Mono<Message> injectPrivateChannel(Message msg) {
+        if (!msg.getAuthor().isPresent())
+            return Mono.just(msg);
+
+        return msg.getAuthor().get().getPrivateChannel().map(privateChannel -> {
             try {
-                List<Embed> implEmbedded = msg.getEmbeds().stream().map(intfEmbedded -> (Embed) intfEmbedded).collect(Collectors.toList());
+                // Access private field of message
+                Field dataField = msg.getClass().getDeclaredField("data");
+                dataField.setAccessible(true);
+                MessageBean data = (MessageBean) dataField.get(msg);
 
-                List<Long> mentions = new ArrayList<>();
-                msg.getMentions().forEach(iUser -> mentions.add(iUser.getLongID()));
+                data.setChannelId(privateChannel.getId().asLong());
 
-                List<Long> roleMentions = new ArrayList<>();
-                msg.getMentions().forEach(iUser -> roleMentions.add(iUser.getLongID()));
-
-                return new Message(msg.getClient(), msg.getLongID(), msg.getContent(), msg.getAuthor(), msg.getAuthor().getOrCreatePMChannel(),
-                        msg.getTimestamp(), msg.getEditedTimestamp().orElse(null), msg.mentionsEveryone(),
-                        mentions, roleMentions, msg.getAttachments(), msg.isPinned(), implEmbedded, msg.getWebhookLongID(), msg.getType());
-            } catch (DiscordException e) {
-                GECkO.logger.error("[CommandHandler] Could not inject private channel.");
+                dataField.setAccessible(false);
+            } catch (NoSuchFieldException | IllegalAccessException e) {
                 ErrorHandler.handleError(e);
             }
 
-            return null;
-        }).get();
+            return msg;
+        });
     }
 
     /**
      * Analyses the incoming messages to trigger matching commands.
      *
-     * @param messageReceivedEvent the message received event
+     * @param messageCreateEvent the message received event
      */
-    @Override
-    public void handle(sx.blah.discord.handle.impl.events.guild.channel.message.MessageReceivedEvent messageReceivedEvent) {
-        // Do nothing if bot is not ready to prevent exceptions
-        if (!GECkO.discordClient.isReady()) {
-            return;
-        }
+    public static void handle(MessageCreateEvent messageCreateEvent) {
+        Message message = messageCreateEvent.getMessage();
 
-        final IMessage finalMsg = messageReceivedEvent.getMessage();
-        String text = finalMsg.getContent();
+        if (!message.getContent().isPresent())
+            return;
+
+        String text = message.getContent().get();
 
         Arrays.stream(text.split("\n")).forEach((line) -> {
             // Make new modifiable message object
-            IMessage msg = finalMsg;
+            Message msg = message;
 
             // Parse command
             StrTokenizer tokenizer = new StrTokenizer(line, ' ', '"');
@@ -111,7 +104,7 @@ public class CommandHandler implements IListener<MessageReceivedEvent> {
             // Determine type of command
             Command command = null;
             if (tokens.size() > 0) {
-                if (tokens.get(0).equals("<@" + GECkO.discordClient.getOurUser().getLongID() + ">")) {
+                if (GECkO.discordClient.getSelfId().isPresent() && tokens.get(0).equals("<@" + GECkO.discordClient.getSelfId().get() + ">")) {
                     if (tokens.size() > 1) {
                         command = CommandRegistry.getMentionCommand(tokens.get(1));
                     } else {
@@ -123,12 +116,15 @@ public class CommandHandler implements IListener<MessageReceivedEvent> {
             }
 
             if (command != null) {
-                if (!msg.getChannel().isPrivate() || command.isAllowPrivateMessage()) {
+                if (!messageCreateEvent.getGuildId().isPresent() || command.isAllowPrivateMessage()) {
                     if (command.isForcePrivateReply()) {
-                        msg = injectPrivateChannel(msg);
+                        Message newMsg = injectPrivateChannel(msg).block();
+                        if (newMsg != null) {
+                            msg = newMsg;
+                        }
                     }
 
-                    if (command.getPermissions().isUserPermitted(msg.getGuild(), msg.getAuthor())) {
+                    if ((!messageCreateEvent.getMember().isPresent() && msg.getAuthor().isPresent() && command.getPermissions().isUserPermitted(msg.getAuthor().get())) || command.getPermissions().isMemberPermitted(messageCreateEvent.getMember().get())) {
                         List<String> args;
                         if (!command.isMentionCommand()) {
                             args = tokens.subList(1, tokens.size());
@@ -139,7 +135,7 @@ public class CommandHandler implements IListener<MessageReceivedEvent> {
                         }
                         command.execute(msg, args);
                     } else {
-                        CommandUtils.respond(msg, "You are not permitted to use this command.");
+                        CommandUtils.respond(msg, "You are not permitted to use this command.").subscribe();
                     }
 
                     if (command.isRemoveAfterCall()) {

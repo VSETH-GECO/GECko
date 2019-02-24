@@ -21,7 +21,7 @@ package ch.ethz.geco.gecko.command.misc;
 
 import ch.ethz.geco.gecko.MediaSynchronizer;
 import ch.ethz.geco.gecko.command.Command;
-import sx.blah.discord.handle.obj.IMessage;
+import discord4j.core.object.entity.Message;
 
 import java.util.List;
 
@@ -31,7 +31,7 @@ public class Test extends Command {
     }
 
     @Override
-    public void execute(IMessage msg, List<String> args) {
+    public void execute(Message msg, List<String> args) {
         MediaSynchronizer.init();
         MediaSynchronizer.loadNews();
         MediaSynchronizer.loadEvents();

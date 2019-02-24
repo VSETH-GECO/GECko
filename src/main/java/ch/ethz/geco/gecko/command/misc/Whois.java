@@ -20,11 +20,12 @@
 package ch.ethz.geco.gecko.command.misc;
 
 import ch.ethz.geco.g4j.obj.ILanUser;
+import ch.ethz.geco.g4j.obj.IUser;
 import ch.ethz.geco.gecko.GECkO;
 import ch.ethz.geco.gecko.command.Command;
 import ch.ethz.geco.gecko.command.CommandUtils;
-import sx.blah.discord.handle.obj.IMessage;
-import sx.blah.discord.handle.obj.IUser;
+import discord4j.core.object.entity.Message;
+import discord4j.core.object.util.Snowflake;
 
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -37,14 +38,14 @@ public class Whois extends Command {
     }
 
     @Override
-    public void execute(IMessage msg, List<String> args) {
-        if (msg.getMentions().size() > 0) {
-            IUser user = msg.getMentions().get(0);
+    public void execute(Message msg, List<String> args) {
+        if (!msg.getUserMentionIds().isEmpty()) {
+            Snowflake userID = (Snowflake) msg.getUserMentionIds().toArray()[0];
             String message;
             try {
-                ch.ethz.geco.g4j.obj.IUser userInfo = GECkO.gecoClient.getUserByDiscordID(user.getLongID());
+                IUser userInfo = GECkO.gecoClient.getUserByDiscordID(userID.asLong());
                 if (userInfo != null) {
-                    message = "**__User: " + user.getName() + "#" + user.getDiscriminator() + "__**\n**GECO:** <https://geco.ethz.ch/user/" + userInfo.getID() + ">";
+                    message = "\n**GECO:** <https://geco.ethz.ch/user/" + userInfo.getID() + ">";
 
                     if (userInfo.getSteamID().isPresent()) {
                         message += "\n**Steam:** <http://steamcommunity.com/profiles/" + userInfo.getSteamID().get() + ">";
@@ -64,9 +65,20 @@ public class Whois extends Command {
                     message = "An internal error occurred.";
                 }
             } catch (NoSuchElementException e) {
-                message = "There is no account linked to **" + user.getName() + "#" + user.getDiscriminator() + "**";
+                message = "";
             }
 
+            final String finalMessage = message;
+            GECkO.discordClient.getUserById(userID).subscribe(user -> {
+                String newMessage = finalMessage;
+                if (newMessage.length() > 0) {
+                    newMessage = "**__User: " + user.getUsername() + "#" + user.getDiscriminator() + "__**" + newMessage;
+                } else {
+                    newMessage = "There is no account linked to **" + user.getUsername() + "#" + user.getDiscriminator() + "**";
+                }
+
+                CommandUtils.respond(msg, newMessage).subscribe();
+            });
             CommandUtils.respond(msg, message);
         } else {
             printUsage(msg);

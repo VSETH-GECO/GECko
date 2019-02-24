@@ -135,6 +135,14 @@ public class ConfigManager {
         addCoreField("pastebin_apiKey", "[Pastebin] Please specify the Pastebin API key: ");
     }
 
+    public static String getProperty(String key) {
+        return properties.getProperty(key);
+    }
+
+    public static Object setProperty(String key, String value) {
+        return properties.setProperty(key, value);
+    }
+
     /**
      * Checks for the core configurations and asks the user to input them if missing.
      */

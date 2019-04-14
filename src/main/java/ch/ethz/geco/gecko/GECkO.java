@@ -23,7 +23,6 @@ import ch.ethz.geco.g4j.impl.DefaultGECoClient;
 import ch.ethz.geco.g4j.obj.GECoClient;
 import ch.ethz.geco.gecko.command.CommandBank;
 import ch.ethz.geco.gecko.command.CommandHandler;
-import ch.ethz.geco.gecko.command.CommandUtils;
 import ch.ethz.geco.gecko.rest.WebHookServer;
 import discord4j.core.DiscordClient;
 import discord4j.core.DiscordClientBuilder;
@@ -34,12 +33,6 @@ import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.TextChannel;
 import discord4j.core.object.util.Snowflake;
 import org.slf4j.LoggerFactory;
-import sx.blah.discord.api.ClientBuilder;
-import sx.blah.discord.api.IDiscordClient;
-import sx.blah.discord.handle.obj.IChannel;
-import sx.blah.discord.util.DiscordException;
-
-import javax.xml.soap.Text;
 
 public class GECkO {
     /**
@@ -140,15 +133,13 @@ public class GECkO {
             }
         });
 
+        discordClient.login().block();
     }
 
     /**
      * Called after the Discord API is ready to operate.
      */
     public static void postInit() {
-        // Listen to messages
-        discordClient.getEventDispatcher().on(MessageCreateEvent.class).subscribe(CommandHandler::handle);
-
         // Stuff you only want to be initialized once
         if (!initOnce) {
             // Login
@@ -160,17 +151,17 @@ public class GECkO {
             // Add shutdown hook
             Runtime.getRuntime().addShutdownHook(new Thread(GECkO::preShutdown));
 
-            // Start to listen to commands after initializing everything else
-            discordClient.getDispatcher().registerListener(new CommandHandler());
+            // Listen to messages
+            discordClient.getEventDispatcher().on(MessageCreateEvent.class).subscribe(CommandHandler::handle);
 
             // Start periodic news and event updates
             MediaSynchronizer.startPeriodicCheck();
         }
 
         if (initOnce) {
-            CommandUtils.respond(mainChannel, "**Reconnected!**");
+            mainChannel.createMessage(spec -> spec.setContent("**Reconnected!**")).subscribe();
         } else {
-            CommandUtils.respond(mainChannel, "**Initialized!**");
+            mainChannel.createMessage(spec -> spec.setContent("**Initialized!**")).subscribe();
         }
 
         initOnce = true;

@@ -19,8 +19,8 @@
 
 package ch.ethz.geco.gecko.command.misc;
 
-import ch.ethz.geco.g4j.obj.ILanUser;
-import ch.ethz.geco.g4j.obj.IUser;
+import ch.ethz.geco.g4j.obj.LanUser;
+import ch.ethz.geco.g4j.obj.User;
 import ch.ethz.geco.gecko.GECkO;
 import ch.ethz.geco.gecko.command.Command;
 import ch.ethz.geco.gecko.command.CommandUtils;
@@ -43,7 +43,7 @@ public class Whois extends Command {
             Snowflake userID = (Snowflake) msg.getUserMentionIds().toArray()[0];
             String message;
             try {
-                IUser userInfo = GECkO.gecoClient.getUserByDiscordID(userID.asLong());
+                User userInfo = GECkO.gecoClient.getUserByDiscordID(userID.asLong()).block();
                 if (userInfo != null) {
                     message = "\n**GECO:** <https://geco.ethz.ch/user/" + userInfo.getID() + ">";
 
@@ -55,7 +55,7 @@ public class Whois extends Command {
                         message += "\n**Battle.net:** " + userInfo.getBattleNetID().get();
                     }
 
-                    ILanUser lanUser = GECkO.gecoClient.getLanUserByName(userInfo.getUserName());
+                    LanUser lanUser = GECkO.gecoClient.getLanUserByName(userInfo.getUserName()).block();
                     if (lanUser != null) {
                         if (lanUser.getSeatName().isPresent() && !lanUser.getSeatName().get().equals("")) {
                             message += "\n**Seat:** " + lanUser.getSeatName().get();
@@ -79,7 +79,7 @@ public class Whois extends Command {
 
                 CommandUtils.respond(msg, newMessage).subscribe();
             });
-            CommandUtils.respond(msg, message);
+            CommandUtils.respond(msg, message).subscribe();
         } else {
             printUsage(msg);
         }

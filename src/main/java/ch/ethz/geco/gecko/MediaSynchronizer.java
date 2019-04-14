@@ -22,7 +22,9 @@ package ch.ethz.geco.gecko;
 import ch.ethz.geco.g4j.obj.Event;
 import ch.ethz.geco.g4j.obj.News;
 import discord4j.core.object.Embed;
+import discord4j.core.object.data.stored.embed.EmbedAuthorBean;
 import discord4j.core.object.data.stored.embed.EmbedBean;
+import discord4j.core.object.data.stored.embed.EmbedFooterBean;
 import discord4j.core.object.data.stored.embed.EmbedImageBean;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.TextChannel;
@@ -30,8 +32,8 @@ import discord4j.core.object.util.Snowflake;
 import discord4j.core.spec.EmbedCreateSpec;
 
 import java.awt.*;
-import java.util.*;
 import java.util.List;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -88,14 +90,22 @@ public class MediaSynchronizer {
         syncScheduler.scheduleWithFixedDelay(MediaSynchronizer::check, 0, UPDATE_INTERVAL_MIN, TimeUnit.MINUTES);
     }
 
-    private static EmbedCreateSpec setEmbedFromMedia(EmbedCreateSpec embed, News news) {
-        return embed.setTitle(news.getTitle()).setDescription(news.getDescription()).setUrl(news.getURL())
-                .setColor(new Color(0x7289DA)).setFooter(news.getFooter(), null)
-                .setAuthor(news.getAuthorName(), news.getAuthorURL(), news.getAuthorIconURL());
-    }
+    private static EmbedCreateSpec setEmbedFromMedia(EmbedCreateSpec embed, EmbedBean media) {
+        embed.setTitle(media.getTitle()).setDescription(media.getDescription()).setUrl(media.getUrl()).setColor(new Color(0x7289DA));
 
-    private static EmbedCreateSpec setEmbedFromMedia(EmbedCreateSpec embed, Event event) {
-        return embed.setTitle(event.getTitle()).setDescription(event.getDescription()).setUrl(event.getURL()).setColor(new Color(0x7289DA));
+        if (media.getFooter() != null) {
+            embed.setFooter(media.getFooter().getText(), null);
+        }
+
+        if (media.getAuthor() != null) {
+            embed.setAuthor(media.getAuthor().getName(), media.getAuthor().getUrl(), media.getAuthor().getIconUrl());
+        }
+
+        if (media.getImage() != null) {
+            embed.setImage(media.getImage().getUrl());
+        }
+
+        return embed;
     }
 
     /**
@@ -134,7 +144,13 @@ public class MediaSynchronizer {
         MediaSynchronizer.newsOrdering.clear();
 
         if (NEWS_CHANNEL.getLastMessageId().isPresent()) {
-            NEWS_CHANNEL.getMessagesBefore(NEWS_CHANNEL.getLastMessageId().get()).take(30).filter(message -> {
+            List<Message> newsMessages = NEWS_CHANNEL.getMessagesBefore(NEWS_CHANNEL.getLastMessageId().get()).take(30).collectList().block();
+            if (newsMessages == null)
+                return;
+
+            Collections.reverse(newsMessages);
+            newsMessages.add(NEWS_CHANNEL.getLastMessage().block());
+            newsMessages.stream().filter(message -> {
                 Long postID = getPostID(message);
                 // If a message has an ID, put it into the mapping
                 if (postID != null) {
@@ -144,11 +160,17 @@ public class MediaSynchronizer {
 
                 return postID == null;
                 // Otherwise, delete it.
-            }).map(message -> message.delete().block()).then().block();
+            }).forEach(message -> message.delete().block());
         }
 
         if (EVENT_CHANNEL.getLastMessageId().isPresent()) {
-            EVENT_CHANNEL.getMessagesBefore(EVENT_CHANNEL.getLastMessageId().get()).take(30).filter(message -> {
+            List<Message> eventMessages = EVENT_CHANNEL.getMessagesBefore(EVENT_CHANNEL.getLastMessageId().get()).take(30).collectList().block();
+            if (eventMessages == null)
+                return;
+
+            Collections.reverse(eventMessages);
+            eventMessages.add(EVENT_CHANNEL.getLastMessage().block());
+            eventMessages.stream().filter(message -> {
                 Long postID = getPostID(message);
                 // If a message has an ID, put it into the mapping
                 if (postID != null) {
@@ -157,7 +179,7 @@ public class MediaSynchronizer {
 
                 return postID == null;
                 // Otherwise, delete it.
-            }).map(message -> message.delete().block()).then().block();
+            }).forEach(message -> message.delete().block());
         }
 
         GECkO.logger.debug("Found {} local news and {} local event posts.", news.size(), events.size());
@@ -179,7 +201,7 @@ public class MediaSynchronizer {
 
         GECkO.logger.info("Updating news channel.");
 
-        List<News> webNews = GECkO.gecoClient.getNews(1);
+        List<News> webNews = GECkO.gecoClient.getNews(1).collectList().block();
         if (webNews == null) {
             return;
         }
@@ -248,7 +270,7 @@ public class MediaSynchronizer {
             // If there are no more local posts, but there are still web posts missing.
             if (!localNewsIterator.hasNext()) {
                 GECkO.logger.debug("Posting new news post: {}", nextWeb.getID());
-                NEWS_CHANNEL.createMessage(messageCreateSpec -> messageCreateSpec.setEmbed(embedCreateSpec -> setEmbedFromMedia(embedCreateSpec, nextWeb))).subscribe();
+                NEWS_CHANNEL.createMessage(messageCreateSpec -> messageCreateSpec.setEmbed(embedCreateSpec -> setEmbedFromMedia(embedCreateSpec, processMedia(nextWeb)))).subscribe();
             }
 
             while (localNewsIterator.hasNext() || stay) {
@@ -262,10 +284,10 @@ public class MediaSynchronizer {
                     stay = false;
                 } else if (nextWeb.getID().equals(nextLocal.getKey())) {
                     GECkO.logger.debug("Checking local news post: {}", nextLocal.getKey());
-                    EmbedObject processed = processEmbed(getEmbedFromMedia(nextWeb));
-                    if (!embedEqualsEmbedObject(nextLocal.getValue().getEmbeds().get(0), processed)) {
+                    EmbedBean processed = processMedia(nextWeb);
+                    if (!remoteEqualsLocal(processed, nextLocal.getValue())) {
                         nextLocal.getValue().edit(messageEditSpec -> messageEditSpec.setContent(null)
-                                .setEmbed(embedCreateSpec -> setEmbedFromMedia(embedCreateSpec, nextWeb))).subscribe();
+                                .setEmbed(embedCreateSpec -> setEmbedFromMedia(embedCreateSpec, processed))).subscribe();
 
                         GECkO.logger.debug("Updating local news post: {}", nextLocal.getKey());
                     } else {
@@ -285,7 +307,7 @@ public class MediaSynchronizer {
     public static void loadEvents() {
         GECkO.logger.info("Updating events channel.");
 
-        List<Event> webEvents = GECkO.gecoClient.getEvents(1);
+        List<Event> webEvents = GECkO.gecoClient.getEvents(1).collectList().block();
         if (webEvents == null) {
             return;
         }
@@ -312,7 +334,7 @@ public class MediaSynchronizer {
 
             if (!next.getKey().equals(eventIDs.get(0))) {
                 GECkO.logger.info("Found order inconsistencies in events channel, wiping...");
-                events.forEach((id, message) -> RequestBuffer.request(message::delete).get());
+                events.forEach((id, message) -> message.delete().subscribe());
                 events.clear();
                 break;
             } else {
@@ -322,16 +344,16 @@ public class MediaSynchronizer {
 
         // Checking and Updating
         webEvents.forEach(event -> {
-            EmbedObject processed = processEmbed(getEmbedFromMedia(event));
+            EmbedBean processed = processMedia(event);
             if (events.containsKey(event.getID())) {
-                if (!embedEqualsEmbedObject(events.get(event.getID()).getEmbeds().get(0), processed)) {
-                    RequestBuffer.request(() -> events.get(event.getID()).edit(processed)).get();
+                if (!remoteEqualsLocal(processed, events.get(event.getID()))) {
+                    events.get(event.getID()).edit(spec -> spec.setContent(null).setEmbed(embedCreateSpec -> setEmbedFromMedia(embedCreateSpec, processed))).subscribe();
                     GECkO.logger.debug("Updating local event post: {}", event.getID());
                 } else {
                     GECkO.logger.debug("Event post {} is up-to-date.", event.getID());
                 }
             } else {
-                RequestBuffer.request(() -> EVENT_CHANNEL.sendMessage(processed)).get();
+                EVENT_CHANNEL.createMessage(spec -> spec.setContent(null).setEmbed(embedCreateSpec -> setEmbedFromMedia(embedCreateSpec, processed))).subscribe();
                 GECkO.logger.debug("Posting new event post: {}", event.getID());
             }
         });
@@ -346,18 +368,14 @@ public class MediaSynchronizer {
      */
     private static void setNews(long id, EmbedBean message, boolean raw) {
         if (raw) {
-            processEmbed(message);
+            processEmbedBean(message);
         }
 
-        final EmbedObject finalMsg = message;
-
-        RequestBuffer.request(() -> {
-            if (news.containsKey(id)) {
-                news.get(id).edit(finalMsg);
-            } else {
-                news.put(id, NEWS_CHANNEL.sendMessage(finalMsg));
-            }
-        }).get();
+        if (news.containsKey(id)) {
+            news.get(id).edit(spec -> spec.setContent(null).setEmbed(embedCreateSpec -> setEmbedFromMedia(embedCreateSpec, message))).subscribe();
+        } else {
+            NEWS_CHANNEL.createMessage(spec -> spec.setContent(null).setEmbed(embedCreateSpec -> setEmbedFromMedia(embedCreateSpec, message))).subscribe(msg -> news.put(id, msg));
+        }
     }
 
     /**
@@ -379,13 +397,13 @@ public class MediaSynchronizer {
      */
     private static void setEvent(long id, EmbedBean message, boolean raw) {
         if (raw) {
-            processEmbed(message);
+            processEmbedBean(message);
         }
 
         if (events.containsKey(id)) {
-            events.get(id).edit(message);
+            events.get(id).edit(spec -> spec.setContent(null).setEmbed(embedCreateSpec -> setEmbedFromMedia(embedCreateSpec, message))).subscribe();
         } else {
-            events.put(id, EVENT_CHANNEL.sendMessage(message));
+            EVENT_CHANNEL.createMessage(spec -> spec.setContent(null).setEmbed(embedCreateSpec -> setEmbedFromMedia(embedCreateSpec, message))).subscribe(msg -> events.put(id, msg));
         }
     }
 
@@ -405,7 +423,7 @@ public class MediaSynchronizer {
      * @param id the ID of the news post to delete
      */
     public static void deleteNews(long id) {
-        news.remove(id).delete();
+        news.remove(id).delete().subscribe();
     }
 
     /**
@@ -430,10 +448,10 @@ public class MediaSynchronizer {
     /**
      * Processes all the markdown stuff not supported by discord and tries to replace it as good as possible.
      *
-     * @param raw the embed with unprocessed description
-     * @return the processed embed
+     * @param embedBean The embed bean to process.
+     * @return The processed embed bean.
      */
-    private static EmbedBean processEmbed(EmbedBean raw) {
+    private static EmbedBean processEmbedBean(EmbedBean embedBean) {
         /* Markdown Processing:
          * - Emphasis:  supported
          * ->Header:    not supported and has to be parsed
@@ -453,7 +471,7 @@ public class MediaSynchronizer {
          * ->IFrame:            not supported but has to be parsed
          */
 
-        String description = raw.getDescription();
+        String description = embedBean.getDescription();
 
         /* Header Parsing:
          * #      -> **__H1__**
@@ -493,11 +511,10 @@ public class MediaSynchronizer {
         if (imageMatcher.find()) {
             EmbedImageBean imageObject = new EmbedImageBean();
             imageObject.setUrl(imageMatcher.group(1));
-            raw.setImage(imageObject);
+            embedBean.setImage(imageObject);
         }
 
         // Replace all nested image links with normal ones
-
         Matcher nestedMatcher = nestedPattern.matcher(description);
         description = nestedMatcher.replaceAll("[$1]($2)");
 
@@ -569,110 +586,170 @@ public class MediaSynchronizer {
         }
 
         // Extend author icon URL
-        if (raw.getAuthor() != null) {
-            raw.getAuthor().setIconUrl(BASE_URL + raw.getAuthor().getIconUrl());
+        if (embedBean.getAuthor() != null) {
+            embedBean.getAuthor().setIconUrl(BASE_URL + embedBean.getAuthor().getIconUrl());
         }
 
         // Trimming
-        raw.setDescription(description.trim());
-        raw.setTitle(raw.getTitle().trim());
-        raw.setUrl(raw.getUrl().trim());
+        embedBean.setDescription(description.trim());
+        embedBean.setTitle(embedBean.getTitle().trim());
+        embedBean.setUrl(embedBean.getUrl().trim());
 
-        if (raw.getAuthor() != null) {
-            raw.getAuthor().setIconUrl(raw.getAuthor().getIconUrl().trim());
-            raw.getAuthor().setName(raw.getAuthor().getName().trim());
-            raw.getAuthor().setUrl(raw.getAuthor().getUrl().trim());
+        if (embedBean.getAuthor() != null) {
+            embedBean.getAuthor().setIconUrl(embedBean.getAuthor().getIconUrl().trim());
+            embedBean.getAuthor().setName(embedBean.getAuthor().getName().trim());
+            embedBean.getAuthor().setUrl(embedBean.getAuthor().getUrl().trim());
         }
 
-        if (raw.getFooter() != null) {
-            raw.getFooter().setText(raw.getFooter().getText().trim());
+        if (embedBean.getFooter() != null) {
+            embedBean.getFooter().setText(embedBean.getFooter().getText().trim());
         }
 
-        if (raw.getImage() != null) {
-            raw.getImage().setUrl(raw.getImage().getUrl().trim());
+        if (embedBean.getImage() != null) {
+            embedBean.getImage().setUrl(embedBean.getImage().getUrl().trim());
         }
 
         // Description length trimming
-        if (raw.getDescription().length() > Embed.MAX_DESCRIPTION_LENGTH) {
-            String trimString = "...\n\n[Read more](" + raw.getUrl() + ")";
-            raw.setDescription(raw.getDescription().substring(0, Embed.MAX_DESCRIPTION_LENGTH - trimString.length()) + trimString);
+        if (embedBean.getDescription().length() > Embed.MAX_DESCRIPTION_LENGTH) {
+            String trimString = "...\n\n[Read more](" + embedBean.getUrl() + ")";
+            embedBean.setDescription(embedBean.getDescription().substring(0, Embed.MAX_DESCRIPTION_LENGTH - trimString.length()) + trimString);
         }
 
-        return raw;
+        return embedBean;
     }
 
     /**
-     * Returns whether or not the given embeds are the same in terms of a news or event post.
+     * Processes all the markdown stuff not supported by discord and tries to replace it as good as possible.
      *
-     * @param e1 the first embed
-     * @param e2 the second embed
-     * @return if the two embeds are equal
+     * @param event The remote event post to process.
+     * @return The processed embed bean.
      */
-    private static boolean embedEqualsEmbedObject(IEmbed e1, EmbedObject e2) {
-        IEmbed.IEmbedAuthor author1 = e1.getAuthor();
-        EmbedObject.AuthorObject author2 = e2.author;
-        if ((author1 == null) == (author2 == null)) {
-            if (author1 != null) {
-                if (!Objects.equals(author1.getIconUrl(), author2.icon_url)) {
-                    GECkO.logger.debug("Author icon URL has changed.");
-                    return false;
-                }
+    private static EmbedBean processMedia(Event event) {
+        EmbedBean processed = new EmbedBean();
+        processed.setTitle(event.getTitle());
+        processed.setUrl(event.getURL());
+        processed.setDescription(event.getDescription());
 
-                if (!Objects.equals(author1.getName(), author2.name)) {
-                    GECkO.logger.debug("Author name has changed.");
-                    return false;
-                }
+        return processEmbedBean(processed);
+    }
 
-                if (!Objects.equals(author1.getUrl(), author2.url)) {
-                    GECkO.logger.debug("Author URL has changed.");
-                    return false;
-                }
+    /**
+     * Processes all the markdown stuff not supported by discord and tries to replace it as good as possible.
+     *
+     * @param news The remote news post to process.
+     * @return The processed embed bean.
+     */
+    private static EmbedBean processMedia(News news) {
+        EmbedBean processed = new EmbedBean();
+        processed.setTitle(news.getTitle());
+        processed.setUrl(news.getURL());
+        processed.setDescription(news.getDescription());
+
+        EmbedAuthorBean author = new EmbedAuthorBean();
+        author.setName(news.getAuthorName());
+        author.setUrl(news.getAuthorURL());
+        author.setIconUrl(news.getAuthorIconURL());
+        processed.setAuthor(author);
+
+        EmbedFooterBean footer = new EmbedFooterBean();
+        footer.setText(news.getFooter());
+        processed.setFooter(footer);
+
+        return processEmbedBean(processed);
+    }
+
+    /**
+     * Checks if a remote news post is equal to a message containing a local news post.
+     *
+     * @param remote The remote media post in form of an already processed embed bean.
+     * @param local  The local media post in form of the message containing it.
+     * @return True if they are equal, otherwise false.
+     */
+    private static boolean remoteEqualsLocal(EmbedBean remote, Message local) {
+        if (local.getEmbeds().size() != 1) {
+            return false;
+        }
+
+        Embed embed = local.getEmbeds().get(0);
+
+        // Check author properties
+        if ((!embed.getAuthor().isPresent() && remote.getAuthor() != null) || (embed.getAuthor().isPresent() && remote.getAuthor() == null))
+            return false;
+        if (embed.getAuthor().isPresent()) {
+            Embed.Author localAuthor = embed.getAuthor().get();
+            EmbedAuthorBean remoteAuthor = remote.getAuthor();
+            if ((localAuthor.getName() != null && remoteAuthor.getName() == null) || (localAuthor.getName() == null && remoteAuthor.getName() != null))
+                return false;
+            if (localAuthor.getName() != null && !localAuthor.getName().equals(remoteAuthor.getName())) {
+                GECkO.logger.debug("Author name has changed.");
+                return false;
             }
-        } else {
-            return false;
-        }
 
-        if (!Objects.equals(e1.getTitle(), e2.title)) {
-            GECkO.logger.debug("Title has changed.");
-            return false;
-        }
+            if ((localAuthor.getUrl() != null && remoteAuthor.getUrl() == null) || (localAuthor.getUrl() == null && remoteAuthor.getUrl() != null))
+                return false;
+            if (localAuthor.getUrl() != null && !localAuthor.getUrl().equals(remote.getAuthor().getUrl())) {
+                GECkO.logger.debug("Author url has changed.");
+                return false;
+            }
 
-        if (!Objects.equals(e1.getUrl(), e2.url)) {
-            GECkO.logger.debug("URL has changed.");
-            return false;
-        }
-
-        if (!Objects.equals(e1.getDescription(), e2.description)) {
-            if (!(e1.getDescription() == null && Objects.equals(e2.description, ""))) {
-                GECkO.logger.debug("Description has changed.");
+            if ((localAuthor.getIconUrl() != null && remoteAuthor.getIconUrl() == null) || (localAuthor.getIconUrl() == null && remoteAuthor.getIconUrl() != null))
+                return false;
+            if (localAuthor.getIconUrl() != null && !localAuthor.getIconUrl().equals(remoteAuthor.getIconUrl())) {
+                GECkO.logger.debug("Author icon url has changed.");
                 return false;
             }
         }
 
-        IEmbed.IEmbedFooter footer1 = e1.getFooter();
-        EmbedObject.FooterObject footer2 = e2.footer;
-        if ((footer1 == null) == (footer2 == null)) {
-            if (footer1 != null) {
-                if (!Objects.equals(footer1.getText(), footer2.text)) {
-                    GECkO.logger.debug("Footer text has changed.");
-                    return false;
-                }
-            }
-        } else {
+        // Check title
+        if ((!embed.getTitle().isPresent() && remote.getTitle() != null) || (embed.getTitle().isPresent() && remote.getTitle() == null))
+            return false;
+        if (embed.getTitle().isPresent() && !embed.getTitle().get().equals(remote.getTitle())) {
+            GECkO.logger.debug("Title has changed.");
             return false;
         }
 
-        IEmbed.IEmbedImage image1 = e1.getImage();
-        EmbedObject.ImageObject image2 = e2.image;
-        if ((image1 == null) == (image2 == null)) {
-            if (image1 != null) {
-                if (!Objects.equals(image1.getUrl(), image2.url)) {
-                    GECkO.logger.debug("Image URL has changed.");
-                    return false;
-                }
-            }
-        } else {
+        // Check URL
+        if ((!embed.getUrl().isPresent() && remote.getUrl() != null) || (embed.getUrl().isPresent() && remote.getUrl() == null))
             return false;
+        if (embed.getUrl().isPresent() && !embed.getUrl().get().equals(remote.getUrl())) {
+            GECkO.logger.debug("URL has changed.");
+            return false;
+        }
+
+        // Check description
+        if ((!embed.getDescription().isPresent() && remote.getDescription() != null) || (embed.getDescription().isPresent() && remote.getDescription() == null))
+            return false;
+        if (embed.getDescription().isPresent() && !embed.getDescription().get().equals(remote.getDescription())) {
+            GECkO.logger.debug("Description has changed.");
+            return false;
+        }
+
+        // Check footer
+        if ((!embed.getFooter().isPresent() && remote.getFooter() != null) || (embed.getFooter().isPresent() && remote.getFooter() == null))
+            return false;
+        if (embed.getFooter().isPresent()) {
+            Embed.Footer localFooter = embed.getFooter().get();
+            EmbedFooterBean remoteFooter = remote.getFooter();
+            if ((localFooter.getText() != null && remoteFooter.getText() == null) || (localFooter.getText() == null && remoteFooter.getText() != null))
+                return false;
+            if (localFooter.getText() != null && !localFooter.getText().equals(remoteFooter.getText())) {
+                GECkO.logger.debug("Footer has changed.");
+                return false;
+            }
+        }
+
+        // Check images
+        if ((!embed.getImage().isPresent() && remote.getImage() != null) || (embed.getImage().isPresent() && remote.getImage() == null))
+            return false;
+        if (embed.getImage().isPresent()) {
+            Embed.Image localImage = embed.getImage().get();
+            EmbedImageBean remoteImage = remote.getImage();
+            if ((localImage.getUrl() != null && remoteImage.getUrl() == null) || (localImage.getUrl() == null && remoteImage.getUrl() != null))
+                return false;
+            if (localImage.getUrl() != null && !localImage.getUrl().equals(remoteImage.getUrl())) {
+                GECkO.logger.debug("Image has changed.");
+                return false;
+            }
         }
 
         return true;

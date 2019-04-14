@@ -92,4 +92,8 @@
         <appender-ref ref="DEBUGFILE"/>
         <appender-ref ref="ERRORFILE"/>
     </root>
+
+    <logger name="reactor" level="INFO"/>
+    <logger name="io.netty" level="INFO"/>
+    <logger name="discord4j" level="INFO"/>
 </configuration>

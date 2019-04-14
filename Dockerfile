@@ -1,8 +1,8 @@
-FROM docker.stammgruppe.eu/ubuntu:1
+FROM openjdk:8
 
+RUN mkdir /gecko
 WORKDIR /gecko
 COPY ./target/GECkO.jar .
 COPY ./target/lib ./lib
 RUN mkdir data
-VOLUME ["/gecko/data"]
 ENTRYPOINT ["java", "-jar", "GECkO.jar"]

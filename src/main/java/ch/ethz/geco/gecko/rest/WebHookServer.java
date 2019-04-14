@@ -20,8 +20,6 @@
 package ch.ethz.geco.gecko.rest;
 
 import ch.ethz.geco.g4j.internal.GECoUtils;
-import ch.ethz.geco.g4j.internal.json.EventObject;
-import ch.ethz.geco.g4j.internal.json.NewsObject;
 import ch.ethz.geco.gecko.ConfigManager;
 import ch.ethz.geco.gecko.ErrorHandler;
 import ch.ethz.geco.gecko.GECkO;

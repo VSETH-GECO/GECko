@@ -6,5 +6,6 @@ target/
 build/
 bin/
 backup/
+data/
 *.wav
 log/

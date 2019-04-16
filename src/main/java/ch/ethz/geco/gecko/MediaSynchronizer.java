@@ -32,6 +32,8 @@ import discord4j.core.object.util.Snowflake;
 import discord4j.core.spec.EmbedCreateSpec;
 
 import java.awt.*;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -144,12 +146,11 @@ public class MediaSynchronizer {
         MediaSynchronizer.newsOrdering.clear();
 
         if (NEWS_CHANNEL.getLastMessageId().isPresent()) {
-            List<Message> newsMessages = NEWS_CHANNEL.getMessagesBefore(NEWS_CHANNEL.getLastMessageId().get()).take(30).collectList().block();
+            List<Message> newsMessages = NEWS_CHANNEL.getMessagesBefore(Snowflake.of(Instant.now().plus(10, ChronoUnit.DAYS))).take(30).collectList().block();
             if (newsMessages == null)
                 return;
 
             Collections.reverse(newsMessages);
-            newsMessages.add(NEWS_CHANNEL.getLastMessage().block());
             newsMessages.stream().filter(message -> {
                 Long postID = getPostID(message);
                 // If a message has an ID, put it into the mapping
@@ -164,12 +165,11 @@ public class MediaSynchronizer {
         }
 
         if (EVENT_CHANNEL.getLastMessageId().isPresent()) {
-            List<Message> eventMessages = EVENT_CHANNEL.getMessagesBefore(EVENT_CHANNEL.getLastMessageId().get()).take(30).collectList().block();
+            List<Message> eventMessages = EVENT_CHANNEL.getMessagesBefore(Snowflake.of(Instant.now().plus(10, ChronoUnit.DAYS))).take(30).collectList().block();
             if (eventMessages == null)
                 return;
 
             Collections.reverse(eventMessages);
-            eventMessages.add(EVENT_CHANNEL.getLastMessage().block());
             eventMessages.stream().filter(message -> {
                 Long postID = getPostID(message);
                 // If a message has an ID, put it into the mapping

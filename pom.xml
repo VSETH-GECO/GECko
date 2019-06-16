@@ -125,7 +125,7 @@
         <dependency>
             <groupId>com.discord4j</groupId>
             <artifactId>discord4j-core</artifactId>
-            <version>3.0.2</version>
+            <version>3.0.7</version>
         </dependency>
 
         <!-- Logging Framework -->
@@ -138,7 +138,7 @@
         <dependency>
             <groupId>com.github.VSETH-GECO</groupId>
             <artifactId>GECo4J</artifactId>
-            <version>0.9.7</version>
+            <version>825adeac3540bbcc64094dbdf6781c26d459d7cc</version>
         </dependency>
 
         <dependency>
@@ -178,25 +178,6 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-text</artifactId>
             <version>1.2</version>
-        </dependency>
-
-        <!-- Sound libs used for Acapela API -->
-        <dependency>
-            <groupId>com.googlecode.soundlibs</groupId>
-            <artifactId>mp3spi</artifactId>
-            <version>1.9.5.4</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.googlecode.soundlibs</groupId>
-            <artifactId>tritonus-share</artifactId>
-            <version>0.3.7.4</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.googlecode.soundlibs</groupId>
-            <artifactId>jlayer</artifactId>
-            <version>1.0.1.4</version>
         </dependency>
     </dependencies>
 </project>

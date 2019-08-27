@@ -81,7 +81,7 @@ public class Whois extends Command {
             });
             CommandUtils.respond(msg, message).subscribe();
         } else {
-            printUsage(msg);
+            printUsage(msg).subscribe();
         }
     }
 }

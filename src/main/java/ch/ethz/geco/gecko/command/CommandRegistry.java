@@ -30,12 +30,12 @@ public class CommandRegistry {
     /**
      * Stores a mapping of all registered prefixes and another map with a mapping of all command names with the command.
      */
-    private static Map<String, Map<String, Command>> prefixCommands = new HashMap<>();
+    private static final Map<String, Map<String, Command>> prefixCommands = new HashMap<>();
 
     /**
      * Stores a mapping of all mention commands with the corresponding commands.
      */
-    private static Map<String, Command> mentionCommands = new HashMap<>();
+    private static final Map<String, Command> mentionCommands = new HashMap<>();
 
     /**
      * Used to register a new command. After registering, a command will be triggered if a matching message arrives.

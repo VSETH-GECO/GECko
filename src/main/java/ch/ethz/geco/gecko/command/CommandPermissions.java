@@ -32,7 +32,7 @@ import java.util.Set;
  * TODO: somehow add method to check for discord permissions in addition to roles
  */
 public class CommandPermissions {
-    private Set<Snowflake> permittedRoleIDs = new HashSet<>();
+    private final Set<Snowflake> permittedRoleIDs = new HashSet<>();
 
     /**
      * Returns a Set of permitted role ID's.

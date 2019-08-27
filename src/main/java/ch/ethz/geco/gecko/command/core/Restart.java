@@ -37,7 +37,7 @@ public class Restart extends Command {
         CommandUtils.respond(msg, "**Restarting bot...**").subscribe();
 
         GECkO.logger.debug("[Restart] - Logging out...");
-        GECkO.discordClient.logout();
+        GECkO.discordClient.logout().block();
         GECkO.logger.debug("[Restart] - calling System.exit(0)...");
         new Thread(() -> System.exit(0)).start();
     }

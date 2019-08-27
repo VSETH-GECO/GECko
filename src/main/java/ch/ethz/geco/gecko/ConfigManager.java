@@ -35,7 +35,7 @@ public class ConfigManager {
     /**
      * Stores all core fields. The core fields are the minimum needed fields to run the bot.
      */
-    private static Map<String, String> coreFields = new LinkedHashMap<>();
+    private static final Map<String, String> coreFields = new LinkedHashMap<>();
 
     /**
      * The file path of the default config file.
@@ -96,7 +96,7 @@ public class ConfigManager {
      * Saves the configuration file.
      */
     public static void saveConfig() {
-        FileOutputStream outputStream = null;
+        FileOutputStream outputStream;
         try {
             outputStream = new FileOutputStream(currentPath);
             properties.store(outputStream, "");

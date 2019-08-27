@@ -139,7 +139,7 @@ public class CommandHandler {
                     }
 
                     if (command.isRemoveAfterCall()) {
-                        CommandUtils.deleteMessage(msg);
+                        CommandUtils.deleteMessage(msg).subscribe();
                     }
                 }
             }

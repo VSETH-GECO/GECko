@@ -21,6 +21,7 @@ package ch.ethz.geco.gecko.command;
 
 import ch.ethz.geco.gecko.GECkO;
 import discord4j.core.object.entity.Message;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 
@@ -35,7 +36,7 @@ public abstract class Command {
     private String params = "";
     private String description = "";
     private String prefix;
-    private CommandPermissions permissions = new CommandPermissions();
+    private final CommandPermissions permissions = new CommandPermissions();
     /**
      * Flags with default values
      */
@@ -118,8 +119,6 @@ public abstract class Command {
 
     /**
      * Sets the prefix of this command. NOTE: This overrides the default prefix.
-     *
-     * @return
      */
     public void setPrefix(String prefix) {
         this.prefix = prefix;
@@ -219,9 +218,10 @@ public abstract class Command {
     /**
      * Sends a short message on how to use this command.
      *
-     * @param msg the message which triggered this command
+     * @param msg The message which triggered this command.
+     * @return A Mono of the sent message.
      */
-    public void printUsage(Message msg) {
-        CommandUtils.respond(msg, "**Usage:** `!" + this.getNames()[0] + " " + this.getParams() + "`");
+    public Mono<Message> printUsage(Message msg) {
+        return CommandUtils.respond(msg, "**Usage:** `!" + this.getNames()[0] + " " + this.getParams() + "`");
     }
 }

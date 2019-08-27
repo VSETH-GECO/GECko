@@ -80,7 +80,7 @@ public class WebHookServer extends NanoHTTPD {
         // Read request body into string
         int len = 0;
         try {
-            len = Integer.valueOf(session.getHeaders().get("content-length"));
+            len = Integer.parseInt(session.getHeaders().get("content-length"));
         } catch (NumberFormatException ignored) {
         }
         byte[] byteContent = new byte[len];
@@ -119,10 +119,10 @@ public class WebHookServer extends NanoHTTPD {
         if (endpoints.length > 1) {
             switch (endpoints[0]) {
                 case "news":
-                    MediaSynchronizer.deleteNews(Integer.valueOf(endpoints[1]));
+                    MediaSynchronizer.deleteNews(Integer.parseInt(endpoints[1])).subscribe();
                     break;
                 case "events":
-                    MediaSynchronizer.deleteEvent(Integer.valueOf(endpoints[1]));
+                    MediaSynchronizer.deleteEvent(Integer.parseInt(endpoints[1])).subscribe();
                     break;
                 default:
                     return newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "404 - Nope");
@@ -140,7 +140,7 @@ public class WebHookServer extends NanoHTTPD {
                 case "news":
                     try {
                         EmbedBean embed = GECoUtils.MAPPER.readValue(content, EmbedBean.class);
-                        MediaSynchronizer.setNews(Integer.valueOf(endpoints[1]), embed);
+                        MediaSynchronizer.setNews(Integer.parseInt(endpoints[1]), embed);
                     } catch (JsonParseException | JsonMappingException e) {
                         return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", e.getMessage());
                     } catch (IOException e) {
@@ -151,7 +151,7 @@ public class WebHookServer extends NanoHTTPD {
                 case "events":
                     try {
                         EmbedBean embed = GECoUtils.MAPPER.readValue(content, EmbedBean.class);
-                        MediaSynchronizer.setEvent(Integer.valueOf(endpoints[1]), embed);
+                        MediaSynchronizer.setEvent(Integer.parseInt(endpoints[1]), embed);
                     } catch (JsonParseException | JsonMappingException e) {
                         return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", e.getMessage());
                     } catch (IOException e) {

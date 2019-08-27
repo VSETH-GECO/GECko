@@ -30,6 +30,7 @@ import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.TextChannel;
 import discord4j.core.object.util.Snowflake;
 import discord4j.core.spec.EmbedCreateSpec;
+import reactor.core.publisher.Mono;
 
 import java.awt.*;
 import java.time.Instant;
@@ -50,7 +51,7 @@ import java.util.regex.Pattern;
  *      1)      Load news from website (all or last page?)
  *      2)      Read existing entries
  *      3)      Compare and edit entries
- *  - Websocket support
+ *  - Webhook support
  *      - Support updating, deletion and creation
  */
 
@@ -72,7 +73,13 @@ public class MediaSynchronizer {
     private static final ScheduledExecutorService syncScheduler = Executors.newSingleThreadScheduledExecutor();
     private static final Integer UPDATE_INTERVAL_MIN = 10;
 
+    /**
+     * Checks for event and news changes and updates them accordingly.
+     */
     private static void check() {
+        if (NEWS_CHANNEL == null || EVENT_CHANNEL == null)
+            return;
+
         try {
             if (!GECkO.discordClient.isConnected())
                 return;
@@ -86,12 +93,23 @@ public class MediaSynchronizer {
         }
     }
 
+    /**
+     * Starts the periodic news/event update check.
+     */
     public static void startPeriodicCheck() {
         GECkO.logger.info("Starting periodic media sync.");
 
         syncScheduler.scheduleWithFixedDelay(MediaSynchronizer::check, 0, UPDATE_INTERVAL_MIN, TimeUnit.MINUTES);
     }
 
+    /**
+     * Takes an {@link EmbedCreateSpec} and an {@link EmbedBean} and sets the spec to the content of the embed.
+     * This is used to create a new embed based on the content of another one.
+     *
+     * @param embed The {@link EmbedCreateSpec} to be modified.
+     * @param media The media which will be applied to the spec.
+     * @return The modified {@link EmbedCreateSpec}.
+     */
     private static EmbedCreateSpec setEmbedFromMedia(EmbedCreateSpec embed, EmbedBean media) {
         embed.setTitle(media.getTitle()).setDescription(media.getDescription()).setUrl(media.getUrl()).setColor(new Color(0x7289DA));
 
@@ -196,7 +214,7 @@ public class MediaSynchronizer {
     }
 
     public static void loadNews() {
-        if (NEWS_CHANNEL == null || EVENT_CHANNEL == null)
+        if (NEWS_CHANNEL == null)
             return;
 
         GECkO.logger.info("Updating news channel.");
@@ -305,6 +323,9 @@ public class MediaSynchronizer {
     }
 
     public static void loadEvents() {
+        if (EVENT_CHANNEL == null)
+            return;
+
         GECkO.logger.info("Updating events channel.");
 
         List<Event> webEvents = GECkO.gecoClient.getEvents(1).collectList().block();
@@ -367,6 +388,9 @@ public class MediaSynchronizer {
      * @param raw     if it should be parsed for discord or not
      */
     private static void setNews(long id, EmbedBean message, boolean raw) {
+        if (NEWS_CHANNEL == null)
+            return;
+
         if (raw) {
             processEmbedBean(message);
         }
@@ -396,6 +420,9 @@ public class MediaSynchronizer {
      * @param raw     if it should be parsed for discord or not
      */
     private static void setEvent(long id, EmbedBean message, boolean raw) {
+        if (EVENT_CHANNEL == null)
+            return;
+
         if (raw) {
             processEmbedBean(message);
         }
@@ -420,19 +447,21 @@ public class MediaSynchronizer {
     /**
      * Deletes a news post.
      *
-     * @param id the ID of the news post to delete
+     * @param id The ID of the news post to delete
+     * @return A Mono which emits nothing when the news post was deleted.
      */
-    public static void deleteNews(long id) {
-        news.remove(id).delete().subscribe();
+    public static Mono<Void> deleteNews(long id) {
+        return news.remove(id).delete();
     }
 
     /**
      * Deletes an event post.
      *
-     * @param id the ID of the event post to delete
+     * @param id The ID of the event post to delete
+     * @return A Mono which emits nothing when the event post was deleted.
      */
-    public static void deleteEvent(long id) {
-        events.remove(id).delete();
+    public static Mono<Void> deleteEvent(long id) {
+        return events.remove(id).delete();
     }
 
     // Pre-compile all needed patterns
@@ -481,6 +510,9 @@ public class MediaSynchronizer {
          * #####  -> __H5__
          * ###### -> __H6__
          */
+
+        if (description == null)
+            description = "";
 
         Matcher headerMatcher = headerPattern.matcher(description);
 
@@ -585,17 +617,18 @@ public class MediaSynchronizer {
             iFrameMatcher = iframePattern.matcher(description);
         }
 
-        // Extend author icon URL
-        if (embedBean.getAuthor() != null) {
-            embedBean.getAuthor().setIconUrl(BASE_URL + embedBean.getAuthor().getIconUrl());
-        }
-
         // Trimming
         embedBean.setDescription(description.trim());
-        embedBean.setTitle(embedBean.getTitle().trim());
-        embedBean.setUrl(embedBean.getUrl().trim());
+
+        // Trimming
+        if (embedBean.getTitle() != null)
+            embedBean.setTitle(embedBean.getTitle().trim());
+
+        if (embedBean.getUrl() != null)
+            embedBean.setUrl(embedBean.getUrl().trim());
 
         if (embedBean.getAuthor() != null) {
+            embedBean.getAuthor().setIconUrl(BASE_URL + embedBean.getAuthor().getIconUrl()); // Extend author icon URL
             embedBean.getAuthor().setIconUrl(embedBean.getAuthor().getIconUrl().trim());
             embedBean.getAuthor().setName(embedBean.getAuthor().getName().trim());
             embedBean.getAuthor().setUrl(embedBean.getAuthor().getUrl().trim());

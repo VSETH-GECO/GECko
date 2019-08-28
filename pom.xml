@@ -8,7 +8,7 @@
     <artifactId>gecko</artifactId>
     <version>dev-SNAPSHOT</version>
     <name>GECkO</name>
-    <description>The official GECO Discord bot</description>
+    <description>The official GECo Discord bot</description>
     <inceptionYear>2016</inceptionYear>
 
     <properties>
@@ -32,8 +32,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.6.1</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <source>11</source>
+                    <target>11</target>
                 </configuration>
             </plugin>
 
@@ -110,13 +110,19 @@
     </build>
 
     <repositories>
-        <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
+        <repository> <!-- First try to find dependency in central -->
+            <id>1.central</id>
+            <url>https://repo1.maven.org/maven2</url>
         </repository>
-        <repository> <!-- This repo fixes issues with transitive dependencies -->
-            <id>jcenter</id>
+
+        <repository> <!-- Then jcenter -->
+            <id>2.jcenter</id>
             <url>http://jcenter.bintray.com</url>
+        </repository>
+
+        <repository> <!-- Used to get development snapshots -->
+            <id>3.jitpack.io</id>
+            <url>https://jitpack.io</url>
         </repository>
     </repositories>
 
@@ -125,7 +131,7 @@
         <dependency>
             <groupId>com.discord4j</groupId>
             <artifactId>discord4j-core</artifactId>
-            <version>3.0.7</version>
+            <version>3.0.8</version>
         </dependency>
 
         <!-- Logging Framework -->
@@ -136,9 +142,9 @@
         </dependency>
 
         <dependency>
-            <groupId>com.github.VSETH-GECO</groupId>
+            <groupId>ch.ethz.geco</groupId>
             <artifactId>GECo4J</artifactId>
-            <version>825adeac3540bbcc64094dbdf6781c26d459d7cc</version>
+            <version>0.9.8</version>
         </dependency>
 
         <dependency>
@@ -151,7 +157,7 @@
         <dependency>
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>
-            <version>RELEASE</version>
+            <version>17.0.0</version>
         </dependency>
 
         <!-- Small HTTP server used for providing web hooks -->

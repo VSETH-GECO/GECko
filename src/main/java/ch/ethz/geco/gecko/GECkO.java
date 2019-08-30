@@ -156,6 +156,9 @@ public class GECkO {
 
             // Start periodic news and event updates
             MediaSynchronizer.startPeriodicCheck();
+
+            // Start event logger
+            EventLogger.attachTo(discordClient.getEventDispatcher());
         }
 
         if (initOnce) {
@@ -175,5 +178,6 @@ public class GECkO {
         logger.info("Shutting down...");
 
         ConfigManager.saveConfig();
+        EventLogger.close();
     }
 }

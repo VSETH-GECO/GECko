@@ -197,7 +197,6 @@ class EventLogger {
     }
 
     private static void log(String msg) {
-        GECkO.logger.debug(msg);
         appender.doAppend(new LoggingEvent("", logger, Level.INFO, msg, null, null));
     }
 }

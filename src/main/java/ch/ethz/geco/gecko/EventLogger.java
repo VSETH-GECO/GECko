@@ -18,9 +18,8 @@ import discord4j.core.event.domain.guild.MemberUpdateEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.MessageDeleteEvent;
 import discord4j.core.event.domain.message.MessageUpdateEvent;
-import discord4j.core.object.entity.Member;
-import discord4j.core.object.entity.Message;
-import discord4j.core.object.entity.User;
+import discord4j.core.object.entity.*;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
@@ -91,44 +90,130 @@ class EventLogger {
         appender.getRollingPolicy().stop();
     }
 
+    @Nullable
+    private static String getMessageTrace(Message message) {
+        if (message.getAuthor().isEmpty() || message.getAuthor().get().isBot())
+            return null;
+
+        GuildMessageChannel channel = (GuildMessageChannel) message.getChannel().block();
+
+        if (channel == null)
+            return null;
+
+        String msg = "";
+
+        if (channel.getCategoryId().isPresent()) {
+            Category category = channel.getCategory().block();
+
+            if (category == null)
+                return null;
+
+            msg += category.getName() + " > ";
+        }
+
+        msg += "#" + channel.getName() + " > " +
+                message.getAuthor().get().getUsername() + ": " +
+                message.getContent().orElse("");
+
+        return msg;
+    }
+
     private static void handleMessageCreate(MessageCreateEvent event) {
-        if (event.getMessage().getAuthor().isEmpty())
+        Message message = event.getMessage();
+
+        if (message.getAuthor().isEmpty() || message.getAuthor().get().isBot())
+            return;
+
+        String messageTrace = getMessageTrace(message);
+
+        if (messageTrace == null)
             return;
 
         String msg = "MSG_CREATE | MSG_ID: " +
-                event.getMessage().getId().asString() +
+                message.getId().asString() +
+                " | " +
+                "CHAN_ID: " +
+                message.getChannelId().asString() +
                 " | " +
                 "USER_ID: " +
-                event.getMessage().getAuthor().get().getId().asString() +
-                " | " +
-                event.getMessage().getContent().orElse("-");
+                message.getAuthor().get().getId().asString() +
+                "\n    " + messageTrace;
 
         log(msg);
     }
 
     private static void handleMessageDelete(MessageDeleteEvent event) {
-        String msg = "MSG_DELETE | MSG_ID: " +
-                event.getMessageId().asString();
+        String msg = "";
+
+        if (event.getMessage().isEmpty()) {
+            msg += "MSG_DELETE | MSG_ID: " +
+                    event.getMessageId().asString() +
+                    " | " +
+                    "CHAN_ID: " +
+                    event.getChannelId().asString();
+        } else {
+            Message message = event.getMessage().get();
+
+            if (message.getAuthor().isEmpty() || message.getAuthor().get().isBot())
+                return;
+
+            String messageTrace = getMessageTrace(message);
+
+            if (messageTrace == null)
+                return;
+
+            msg += "MSG_DELETE | MSG_ID: " +
+                    message.getId().asString() +
+                    " | " +
+                    "CHAN_ID: " +
+                    message.getChannelId().asString() +
+                    " | " +
+                    "USER_ID: " +
+                    message.getAuthor().get().getId().asString() +
+                    "\n    " + messageTrace;
+        }
 
         log(msg);
     }
 
     private static void handleMessageUpdate(MessageUpdateEvent event) {
-        String msg = "MSG_UPDATE | MSG_ID: " +
-                event.getMessageId().asString() +
-                " | ";
-
-        Message newMessage = event.getMessage().block();
-
-        if (newMessage == null)
+        if (!event.isContentChanged()) // Do not track updates without changes
             return;
 
-        if (event.getOld().isPresent()) {
-            msg += event.getOld().get().getContent().orElse("-") +
-                    "\n    -> " + newMessage.getContent().orElse("-");
+        Message message = event.getMessage().block();
 
+        if (message == null)
+            return;
+
+        if (message.getAuthor().isEmpty() || message.getAuthor().get().isBot())
+            return;
+
+        String messageTrace = getMessageTrace(message);
+
+        if (messageTrace == null)
+            return;
+
+        String msg = "MSG_CREATE | MSG_ID: " +
+                message.getId().asString() +
+                " | " +
+                "CHAN_ID: " +
+                message.getChannelId().asString() +
+                " | " +
+                "USER_ID: " +
+                message.getAuthor().get().getId().asString() +
+                "\n    ";
+
+        if (event.getOld().isPresent()) {
+            String oldTrace = getMessageTrace(event.getOld().get());
+
+            if (oldTrace == null)
+                return;
+
+            msg += oldTrace +
+                    "\n  → " +
+                    messageTrace;
         } else {
-            msg += event.getCurrentContent().orElse("-");
+            msg += messageTrace;
         }
 
         log(msg);
@@ -176,7 +261,7 @@ class EventLogger {
         Member member = event.getMember();
 
         String msg = "MEMBER_JOIN | USER_ID: " +
-                member.getId() +
+                member.getId().asString() +
                 " | " +
                 member.getDisplayName() + "#" + member.getDiscriminator() +
                 " joined the server!";
@@ -187,8 +272,8 @@ class EventLogger {
     private static void handleMemberLeave(MemberLeaveEvent event) {
         User member = event.getUser();
 
-        String msg = "MEMBER_LEAVE | USER_ID: " +
-                member.getId() +
+        String msg = "MEMBER_LEFT | USER_ID: " +
+                member.getId().asString() +
                 " | " +
                 member.getUsername() + "#" + member.getDiscriminator() +
                 " left the server!";

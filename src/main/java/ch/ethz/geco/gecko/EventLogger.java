@@ -193,7 +193,7 @@ class EventLogger {
         if (messageTrace == null)
             return;
 
-        String msg = "MSG_CREATE | MSG_ID: " +
+        String msg = "MSG_UPDATE | MSG_ID: " +
                 message.getId().asString() +
                 " | " +
                 "CHAN_ID: " +

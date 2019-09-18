@@ -241,9 +241,9 @@ class EventLogger {
         if (event.getOld().isEmpty())
             return;
 
-        // FIXME: undesired behaviour if nickname is actually "N/A"
-        String oldNick = event.getOld().get().getNickname().orElse("N/A");
-        String newNick = event.getCurrentNickname().orElse("N/A");
+        Member member = event.getMember().block();
+        String oldNick = event.getOld().get().getNickname().orElse(member != null ? member.getDisplayName() : "NULL");
+        String newNick = event.getCurrentNickname().orElse(member != null ? member.getDisplayName() : "NULL");
 
         if (!oldNick.equals(newNick)) {
             String msg = "MEMBER_UPDATE | USER_ID: " +

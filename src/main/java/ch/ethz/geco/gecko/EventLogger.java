@@ -50,7 +50,7 @@ class EventLogger {
 
         rollingPolicy.setContext(contextBase);
         rollingPolicy.setParent(appender);
-        rollingPolicy.setFileNamePattern("data/log/events_%d{yy-MM-dd}.%i.log");
+        rollingPolicy.setFileNamePattern("data/log/events_%d{yyyy-ww}.%i.log");
         rollingPolicy.setMaxHistory(7);
         rollingPolicy.setTimeBasedFileNamingAndTriggeringPolicy(sizeAndTimeBasedFNATP);
 

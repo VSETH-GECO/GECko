@@ -1,0 +1,9 @@
+version: '3'
+
+services:
+  gecko:
+    image: docker.stammgruppe.eu/gecko:latest
+    restart: always
+    volumes:
+      - data:/gecko/data
+    container_name: gecko

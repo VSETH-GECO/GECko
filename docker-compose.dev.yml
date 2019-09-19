@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  gecko-dev:
+    image: docker.stammgruppe.eu/gecko-dev:latest
+    restart: always
+    command: --config data/test.properties
+    volumes:
+      - data:/gecko/data
+    container_name: gecko-dev

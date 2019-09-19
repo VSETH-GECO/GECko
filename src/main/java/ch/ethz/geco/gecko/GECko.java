@@ -34,7 +34,7 @@ import discord4j.core.object.entity.TextChannel;
 import discord4j.core.object.util.Snowflake;
 import org.slf4j.LoggerFactory;
 
-public class GECkO {
+public class GECko {
     /**
      * The Discord client used by the bot.
      */
@@ -63,7 +63,7 @@ public class GECkO {
     /**
      * The main logger of the bot.
      */
-    public static final org.slf4j.Logger logger = LoggerFactory.getLogger(GECkO.class);
+    public static final org.slf4j.Logger logger = LoggerFactory.getLogger(GECko.class);
 
     public static void main(String[] args) {
         String token = null;
@@ -93,7 +93,7 @@ public class GECkO {
             }
         }
 
-        GECkO.start(token, prefix, configPath);
+        GECko.start(token, prefix, configPath);
         new WebHookServer(8080);
     }
 
@@ -149,7 +149,7 @@ public class GECkO {
             CommandBank.registerCommands();
 
             // Add shutdown hook
-            Runtime.getRuntime().addShutdownHook(new Thread(GECkO::preShutdown));
+            Runtime.getRuntime().addShutdownHook(new Thread(GECko::preShutdown));
 
             // Listen to messages
             discordClient.getEventDispatcher().on(MessageCreateEvent.class).subscribe(CommandHandler::handle);

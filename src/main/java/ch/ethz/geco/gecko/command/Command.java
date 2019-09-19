@@ -19,7 +19,7 @@
 
 package ch.ethz.geco.gecko.command;
 
-import ch.ethz.geco.gecko.GECkO;
+import ch.ethz.geco.gecko.GECko;
 import discord4j.core.object.entity.Message;
 import reactor.core.publisher.Mono;
 
@@ -211,7 +211,7 @@ public abstract class Command {
      * @param args the arguments passed to this command
      */
     public void execute(Message msg, List<String> args) {
-        GECkO.logger.warn("[Command] Command called without overriding execute method.");
+        GECko.logger.warn("[Command] Command called without overriding execute method.");
         Thread.dumpStack();
     }
 

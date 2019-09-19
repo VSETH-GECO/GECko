@@ -61,8 +61,8 @@ import java.util.regex.Pattern;
  */
 public class MediaSynchronizer {
     private static final String BASE_URL = "https://geco.ethz.ch";
-    private static final TextChannel NEWS_CHANNEL = GECkO.discordClient.getChannelById(Snowflake.of(ConfigManager.getProperties().getProperty("media_newsChannelID"))).ofType(TextChannel.class).block();
-    private static final TextChannel EVENT_CHANNEL = GECkO.discordClient.getChannelById(Snowflake.of(ConfigManager.getProperties().getProperty("media_eventChannelID"))).ofType(TextChannel.class).block();
+    private static final TextChannel NEWS_CHANNEL = GECko.discordClient.getChannelById(Snowflake.of(ConfigManager.getProperties().getProperty("media_newsChannelID"))).ofType(TextChannel.class).block();
+    private static final TextChannel EVENT_CHANNEL = GECko.discordClient.getChannelById(Snowflake.of(ConfigManager.getProperties().getProperty("media_eventChannelID"))).ofType(TextChannel.class).block();
 
     private static final ArrayList<Long> newsOrdering = new ArrayList<>();
     private static final LinkedHashMap<Long, Message> news = new LinkedHashMap<>();
@@ -81,7 +81,7 @@ public class MediaSynchronizer {
             return;
 
         try {
-            if (!GECkO.discordClient.isConnected())
+            if (!GECko.discordClient.isConnected())
                 return;
 
             init();
@@ -97,7 +97,7 @@ public class MediaSynchronizer {
      * Starts the periodic news/event update check.
      */
     public static void startPeriodicCheck() {
-        GECkO.logger.info("Starting periodic media sync.");
+        GECko.logger.info("Starting periodic media sync.");
 
         syncScheduler.scheduleWithFixedDelay(MediaSynchronizer::check, 0, UPDATE_INTERVAL_MIN, TimeUnit.MINUTES);
     }
@@ -200,34 +200,34 @@ public class MediaSynchronizer {
             }).forEach(message -> message.delete().block());
         }
 
-        GECkO.logger.debug("Found {} local news and {} local event posts.", news.size(), events.size());
+        GECko.logger.debug("Found {} local news and {} local event posts.", news.size(), events.size());
 
         StringBuilder newsPosts = new StringBuilder();
         news.forEach((key, value) -> newsPosts.append(key).append(" "));
 
-        GECkO.logger.debug("News posts: {}", newsPosts.toString());
+        GECko.logger.debug("News posts: {}", newsPosts.toString());
 
         StringBuilder eventPosts = new StringBuilder();
         events.forEach((key, value) -> eventPosts.append(key).append(" "));
 
-        GECkO.logger.debug("Event posts: {}", eventPosts.toString());
+        GECko.logger.debug("Event posts: {}", eventPosts.toString());
     }
 
     public static void loadNews() {
         if (NEWS_CHANNEL == null)
             return;
 
-        GECkO.logger.info("Updating news channel.");
+        GECko.logger.info("Updating news channel.");
 
-        List<News> webNews = GECkO.gecoClient.getNews(1).collectList().block();
+        List<News> webNews = GECko.gecoClient.getNews(1).collectList().block();
         if (webNews == null) {
             return;
         }
 
-        GECkO.logger.debug("Found {} remote news posts.", webNews.size());
+        GECko.logger.debug("Found {} remote news posts.", webNews.size());
 
         if (webNews.isEmpty()) {
-            GECkO.logger.warn("This is very unlikely to happen. Possible Bug!");
+            GECko.logger.warn("This is very unlikely to happen. Possible Bug!");
             return;
         }
 
@@ -242,11 +242,11 @@ public class MediaSynchronizer {
         webNews.removeIf(News::isDraft);
 
         // Remove all posts missing remotely after the first web post
-        GECkO.logger.debug("Deleting drafts and deleted posts.");
+        GECko.logger.debug("Deleting drafts and deleted posts.");
         if (newsOrdering.contains(webIDs.get(0))) {
             news.forEach((id, post) -> {
                 if (newsOrdering.indexOf(id) >= newsOrdering.indexOf(webIDs.get(0)) && !webIDs.contains(id)) {
-                    GECkO.logger.debug("Deleting news post: {}", id);
+                    GECko.logger.debug("Deleting news post: {}", id);
                     post.delete().block();
                 }
             });
@@ -256,7 +256,7 @@ public class MediaSynchronizer {
 
         // Check proper ordering of local posts
         // TODO: Might break if posts are missing locally in the middle
-        GECkO.logger.debug("Checking for wrongly ordered posts.");
+        GECko.logger.debug("Checking for wrongly ordered posts.");
         Iterator<Map.Entry<Long, Message>> localNewsIterator = news.entrySet().iterator();
         boolean foundFirst = false;
         while (localNewsIterator.hasNext() && !webIDs.isEmpty()) {
@@ -270,7 +270,7 @@ public class MediaSynchronizer {
 
             if (foundFirst) {
                 if (!next.getKey().equals(webIDs.get(0))) {
-                    GECkO.logger.debug("News post {} is wrongly ordered, removing...", next.getKey());
+                    GECko.logger.debug("News post {} is wrongly ordered, removing...", next.getKey());
                     next.getValue().delete().block();
                     localNewsIterator.remove();
                 } else {
@@ -283,11 +283,11 @@ public class MediaSynchronizer {
         Map.Entry<Long, Message> nextLocal = null;
         localNewsIterator = news.entrySet().iterator();
         for (News nextWeb : webNews) {
-            GECkO.logger.debug("Searching local news post: {}", nextWeb.getID());
+            GECko.logger.debug("Searching local news post: {}", nextWeb.getID());
 
             // If there are no more local posts, but there are still web posts missing.
             if (!localNewsIterator.hasNext()) {
-                GECkO.logger.debug("Posting new news post: {}", nextWeb.getID());
+                GECko.logger.debug("Posting new news post: {}", nextWeb.getID());
                 NEWS_CHANNEL.createMessage(messageCreateSpec -> messageCreateSpec.setEmbed(embedCreateSpec -> setEmbedFromMedia(embedCreateSpec, processMedia(nextWeb)))).subscribe();
             }
 
@@ -298,23 +298,23 @@ public class MediaSynchronizer {
 
                 if (newsOrdering.contains(webNews.get(0).getID()) && newsOrdering.indexOf(nextLocal.getKey()) < newsOrdering.indexOf(webNews.get(0).getID())) {
                     // If we are behind, we skip until we find a news post
-                    GECkO.logger.debug("Found old news post: {}", nextLocal.getKey());
+                    GECko.logger.debug("Found old news post: {}", nextLocal.getKey());
                     stay = false;
                 } else if (nextWeb.getID().equals(nextLocal.getKey())) {
-                    GECkO.logger.debug("Checking local news post: {}", nextLocal.getKey());
+                    GECko.logger.debug("Checking local news post: {}", nextLocal.getKey());
                     EmbedBean processed = processMedia(nextWeb);
                     if (!remoteEqualsLocal(processed, nextLocal.getValue())) {
                         nextLocal.getValue().edit(messageEditSpec -> messageEditSpec.setContent(null)
                                 .setEmbed(embedCreateSpec -> setEmbedFromMedia(embedCreateSpec, processed))).subscribe();
 
-                        GECkO.logger.debug("Updating local news post: {}", nextLocal.getKey());
+                        GECko.logger.debug("Updating local news post: {}", nextLocal.getKey());
                     } else {
-                        GECkO.logger.debug("News post {} is up-to-date.", nextLocal.getKey());
+                        GECko.logger.debug("News post {} is up-to-date.", nextLocal.getKey());
                     }
                     stay = false;
                     break;
                 } else {
-                    GECkO.logger.warn("News post {} is missing locally, ignoring.", nextWeb.getID());
+                    GECko.logger.warn("News post {} is missing locally, ignoring.", nextWeb.getID());
                     stay = true;
                     break;
                 }
@@ -326,20 +326,20 @@ public class MediaSynchronizer {
         if (EVENT_CHANNEL == null)
             return;
 
-        GECkO.logger.info("Updating events channel.");
+        GECko.logger.info("Updating events channel.");
 
-        List<Event> webEvents = GECkO.gecoClient.getEvents(1).collectList().block();
+        List<Event> webEvents = GECko.gecoClient.getEvents(1).collectList().block();
         if (webEvents == null) {
             return;
         }
 
-        GECkO.logger.debug("Found {} remote event posts.", webEvents.size());
+        GECko.logger.debug("Found {} remote event posts.", webEvents.size());
 
         // Store all available event post IDs
         List<Long> eventIDs = new ArrayList<>();
         webEvents.forEach(event -> eventIDs.add(event.getID()));
 
-        GECkO.logger.debug("Deleting deleted events.");
+        GECko.logger.debug("Deleting deleted events.");
         events.forEach((id, message) -> {
             if (!eventIDs.contains(id)) {
                 message.delete().block();
@@ -348,13 +348,13 @@ public class MediaSynchronizer {
         events.entrySet().removeIf(entry -> !eventIDs.contains(entry.getKey()));
 
         // Check proper ordering of local posts
-        GECkO.logger.debug("Checking for wrongly ordered posts.");
+        GECko.logger.debug("Checking for wrongly ordered posts.");
         Iterator<Map.Entry<Long, Message>> localEventsIterator = events.entrySet().iterator();
         while (localEventsIterator.hasNext() && !eventIDs.isEmpty()) {
             Map.Entry<Long, Message> next = localEventsIterator.next();
 
             if (!next.getKey().equals(eventIDs.get(0))) {
-                GECkO.logger.info("Found order inconsistencies in events channel, wiping...");
+                GECko.logger.info("Found order inconsistencies in events channel, wiping...");
                 events.forEach((id, message) -> message.delete().subscribe());
                 events.clear();
                 break;
@@ -369,13 +369,13 @@ public class MediaSynchronizer {
             if (events.containsKey(event.getID())) {
                 if (!remoteEqualsLocal(processed, events.get(event.getID()))) {
                     events.get(event.getID()).edit(spec -> spec.setContent(null).setEmbed(embedCreateSpec -> setEmbedFromMedia(embedCreateSpec, processed))).subscribe();
-                    GECkO.logger.debug("Updating local event post: {}", event.getID());
+                    GECko.logger.debug("Updating local event post: {}", event.getID());
                 } else {
-                    GECkO.logger.debug("Event post {} is up-to-date.", event.getID());
+                    GECko.logger.debug("Event post {} is up-to-date.", event.getID());
                 }
             } else {
                 EVENT_CHANNEL.createMessage(spec -> spec.setContent(null).setEmbed(embedCreateSpec -> setEmbedFromMedia(embedCreateSpec, processed))).subscribe();
-                GECkO.logger.debug("Posting new event post: {}", event.getID());
+                GECko.logger.debug("Posting new event post: {}", event.getID());
             }
         });
     }
@@ -714,21 +714,21 @@ public class MediaSynchronizer {
             if ((localAuthor.getName() != null && remoteAuthor.getName() == null) || (localAuthor.getName() == null && remoteAuthor.getName() != null))
                 return false;
             if (localAuthor.getName() != null && !localAuthor.getName().equals(remoteAuthor.getName())) {
-                GECkO.logger.debug("Author name has changed.");
+                GECko.logger.debug("Author name has changed.");
                 return false;
             }
 
             if ((localAuthor.getUrl() != null && remoteAuthor.getUrl() == null) || (localAuthor.getUrl() == null && remoteAuthor.getUrl() != null))
                 return false;
             if (localAuthor.getUrl() != null && !localAuthor.getUrl().equals(remote.getAuthor().getUrl())) {
-                GECkO.logger.debug("Author url has changed.");
+                GECko.logger.debug("Author url has changed.");
                 return false;
             }
 
             if ((localAuthor.getIconUrl() != null && remoteAuthor.getIconUrl() == null) || (localAuthor.getIconUrl() == null && remoteAuthor.getIconUrl() != null))
                 return false;
             if (localAuthor.getIconUrl() != null && !localAuthor.getIconUrl().equals(remoteAuthor.getIconUrl())) {
-                GECkO.logger.debug("Author icon url has changed.");
+                GECko.logger.debug("Author icon url has changed.");
                 return false;
             }
         }
@@ -737,7 +737,7 @@ public class MediaSynchronizer {
         if ((!embed.getTitle().isPresent() && remote.getTitle() != null) || (embed.getTitle().isPresent() && remote.getTitle() == null))
             return false;
         if (embed.getTitle().isPresent() && !embed.getTitle().get().equals(remote.getTitle())) {
-            GECkO.logger.debug("Title has changed.");
+            GECko.logger.debug("Title has changed.");
             return false;
         }
 
@@ -745,7 +745,7 @@ public class MediaSynchronizer {
         if ((!embed.getUrl().isPresent() && remote.getUrl() != null) || (embed.getUrl().isPresent() && remote.getUrl() == null))
             return false;
         if (embed.getUrl().isPresent() && !embed.getUrl().get().equals(remote.getUrl())) {
-            GECkO.logger.debug("URL has changed.");
+            GECko.logger.debug("URL has changed.");
             return false;
         }
 
@@ -753,7 +753,7 @@ public class MediaSynchronizer {
         if ((!embed.getDescription().isPresent() && remote.getDescription() != null) || (embed.getDescription().isPresent() && remote.getDescription() == null))
             return false;
         if (embed.getDescription().isPresent() && !embed.getDescription().get().equals(remote.getDescription())) {
-            GECkO.logger.debug("Description has changed.");
+            GECko.logger.debug("Description has changed.");
             return false;
         }
 
@@ -766,7 +766,7 @@ public class MediaSynchronizer {
             if ((localFooter.getText() != null && remoteFooter.getText() == null) || (localFooter.getText() == null && remoteFooter.getText() != null))
                 return false;
             if (localFooter.getText() != null && !localFooter.getText().equals(remoteFooter.getText())) {
-                GECkO.logger.debug("Footer has changed.");
+                GECko.logger.debug("Footer has changed.");
                 return false;
             }
         }
@@ -780,7 +780,7 @@ public class MediaSynchronizer {
             if ((localImage.getUrl() != null && remoteImage.getUrl() == null) || (localImage.getUrl() == null && remoteImage.getUrl() != null))
                 return false;
             if (localImage.getUrl() != null && !localImage.getUrl().equals(remoteImage.getUrl())) {
-                GECkO.logger.debug("Image has changed.");
+                GECko.logger.debug("Image has changed.");
                 return false;
             }
         }

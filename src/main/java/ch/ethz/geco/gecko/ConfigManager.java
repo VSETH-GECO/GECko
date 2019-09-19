@@ -149,7 +149,7 @@ public class ConfigManager {
     public static void checkCoreFields() {
         for (String key : coreFields.keySet()) {
             if (!properties.containsKey(key)) {
-                GECkO.logger.info(coreFields.get(key));
+                GECko.logger.info(coreFields.get(key));
                 Scanner scanner = new Scanner(System.in);
 
                 properties.setProperty(key, scanner.nextLine());

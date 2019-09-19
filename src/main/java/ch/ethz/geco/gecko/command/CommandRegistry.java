@@ -19,7 +19,7 @@
 
 package ch.ethz.geco.gecko.command;
 
-import ch.ethz.geco.gecko.GECkO;
+import ch.ethz.geco.gecko.GECko;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
@@ -49,7 +49,7 @@ public class CommandRegistry {
                 if (!mentionCommands.containsKey(alias)) {
                     mentionCommands.put(alias, cmd);
                 } else {
-                    GECkO.logger.error("[CommandRegistry] Mention alias <" + alias + "> already defined in class: " + mentionCommands.get(alias).getClass().getSimpleName());
+                    GECko.logger.error("[CommandRegistry] Mention alias <" + alias + "> already defined in class: " + mentionCommands.get(alias).getClass().getSimpleName());
                 }
             }
         } else {    // Otherwise it's a prefix command
@@ -70,7 +70,7 @@ public class CommandRegistry {
                 if (!prefixCommands.get(prefix).containsKey(alias)) {
                     prefixCommands.get(prefix).put(alias, cmd);
                 } else {
-                    GECkO.logger.error("[CommandRegistry] Prefix alias <" + alias + "> already defined in class: " + prefixCommands.get(prefix).get(alias).getClass().getSimpleName());
+                    GECko.logger.error("[CommandRegistry] Prefix alias <" + alias + "> already defined in class: " + prefixCommands.get(prefix).get(alias).getClass().getSimpleName());
                 }
             }
         }

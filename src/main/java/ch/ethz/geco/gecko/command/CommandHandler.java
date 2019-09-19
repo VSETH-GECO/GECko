@@ -20,7 +20,7 @@
 package ch.ethz.geco.gecko.command;
 
 import ch.ethz.geco.gecko.ErrorHandler;
-import ch.ethz.geco.gecko.GECkO;
+import ch.ethz.geco.gecko.GECko;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.data.stored.MessageBean;
 import discord4j.core.object.entity.Message;
@@ -104,7 +104,7 @@ public class CommandHandler {
             // Determine type of command
             Command command = null;
             if (tokens.size() > 0) {
-                if (GECkO.discordClient.getSelfId().isPresent() && tokens.get(0).equals("<@" + GECkO.discordClient.getSelfId().get() + ">")) {
+                if (GECko.discordClient.getSelfId().isPresent() && tokens.get(0).equals("<@" + GECko.discordClient.getSelfId().get() + ">")) {
                     if (tokens.size() > 1) {
                         command = CommandRegistry.getMentionCommand(tokens.get(1));
                     } else {
@@ -128,10 +128,10 @@ public class CommandHandler {
                         List<String> args;
                         if (!command.isMentionCommand()) {
                             args = tokens.subList(1, tokens.size());
-                            GECkO.logger.debug("Calling command <" + tokens.get(0) + "> with arguments: " + args.toString());
+                            GECko.logger.debug("Calling command <" + tokens.get(0) + "> with arguments: " + args.toString());
                         } else {
                             args = tokens.subList(2, tokens.size());
-                            GECkO.logger.debug("Calling mention command <" + tokens.get(1) + "> with arguments: " + args.toString());
+                            GECko.logger.debug("Calling mention command <" + tokens.get(1) + "> with arguments: " + args.toString());
                         }
                         command.execute(msg, args);
                     } else {

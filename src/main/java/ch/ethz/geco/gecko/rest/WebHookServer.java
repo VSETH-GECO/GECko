@@ -22,7 +22,7 @@ package ch.ethz.geco.gecko.rest;
 import ch.ethz.geco.g4j.internal.GECoUtils;
 import ch.ethz.geco.gecko.ConfigManager;
 import ch.ethz.geco.gecko.ErrorHandler;
-import ch.ethz.geco.gecko.GECkO;
+import ch.ethz.geco.gecko.GECko;
 import ch.ethz.geco.gecko.MediaSynchronizer;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -63,7 +63,7 @@ public class WebHookServer extends NanoHTTPD {
         try {
             //makeSecure(makeSSLSocketFactory("stammgruppe.jks", "123321".toCharArray()), null);
             start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
-            GECkO.logger.info("Started Web Hook Server on port: " + port);
+            GECko.logger.info("Started Web Hook Server on port: " + port);
         } catch (IOException e) {
             ErrorHandler.handleError(e);
         }

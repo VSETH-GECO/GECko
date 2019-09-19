@@ -19,7 +19,7 @@
 
 package ch.ethz.geco.gecko.command;
 
-import ch.ethz.geco.gecko.GECkO;
+import ch.ethz.geco.gecko.GECko;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.User;
 import discord4j.core.object.util.Snowflake;
@@ -62,6 +62,6 @@ public class CommandPermissions {
     }
 
     public boolean isUserPermitted(User user) {
-        return isMemberPermitted(GECkO.mainGuild.getMemberById(user.getId()).block());
+        return isMemberPermitted(GECko.mainGuild.getMemberById(user.getId()).block());
     }
 }

@@ -93,8 +93,8 @@ public class ErrorHandler {
                         .append("(").append(traceElement.getFileName()).append(":").append(traceElement.getLineNumber()).append(")").append("\n");
             }
 
-            if (GECkO.discordClient.isConnected()) {
-                GECkO.mainChannel.createMessage(messageCreateSpec -> messageCreateSpec.setEmbed(embedCreateSpec -> embedCreateSpec
+            if (GECko.discordClient.isConnected()) {
+                GECko.mainChannel.createMessage(messageCreateSpec -> messageCreateSpec.setEmbed(embedCreateSpec -> embedCreateSpec
                         .setColor(new Color(255, 0, 0))
                         .setTitle(e.getClass().getSimpleName() + ": " + e.getMessage())
                         .setDescription(builder.toString())))

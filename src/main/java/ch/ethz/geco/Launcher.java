@@ -19,7 +19,7 @@
 
 package ch.ethz.geco;
 
-import ch.ethz.geco.gecko.GECkO;
+import ch.ethz.geco.gecko.GECko;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
@@ -41,7 +41,7 @@ public class Launcher {
                 File.separator + "bin" +
                 File.separator + "java";
         String classpath = System.getProperty("java.class.path");
-        String className = GECkO.class.getCanonicalName();
+        String className = GECko.class.getCanonicalName();
 
         // Merge args with process commands
         String[] command = new String[4 + args.length];

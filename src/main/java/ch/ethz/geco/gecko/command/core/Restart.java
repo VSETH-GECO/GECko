@@ -19,7 +19,7 @@
 
 package ch.ethz.geco.gecko.command.core;
 
-import ch.ethz.geco.gecko.GECkO;
+import ch.ethz.geco.gecko.GECko;
 import ch.ethz.geco.gecko.command.Command;
 import ch.ethz.geco.gecko.command.CommandUtils;
 import discord4j.core.object.entity.Message;
@@ -36,9 +36,9 @@ public class Restart extends Command {
     public void execute(Message msg, List<String> args) {
         CommandUtils.respond(msg, "**Restarting bot...**").subscribe();
 
-        GECkO.logger.debug("[Restart] - Logging out...");
-        GECkO.discordClient.logout().block();
-        GECkO.logger.debug("[Restart] - calling System.exit(0)...");
+        GECko.logger.debug("[Restart] - Logging out...");
+        GECko.discordClient.logout().block();
+        GECko.logger.debug("[Restart] - calling System.exit(0)...");
         new Thread(() -> System.exit(0)).start();
     }
 }

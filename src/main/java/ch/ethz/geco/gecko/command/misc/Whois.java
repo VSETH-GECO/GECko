@@ -45,7 +45,7 @@ public class Whois extends Command {
             try {
                 User userInfo = GECko.gecoClient.getUserByDiscordID(userID.asLong()).block();
                 if (userInfo != null) {
-                    message = "\n**GECO:** <https://geco.ethz.ch/user/" + userInfo.getID() + ">";
+                    message = "\n**GECo:** <https://geco.ethz.ch/user/" + userInfo.getID() + ">";
 
                     if (userInfo.getSteamID().isPresent()) {
                         message += "\n**Steam:** <http://steamcommunity.com/profiles/" + userInfo.getSteamID().get() + ">";

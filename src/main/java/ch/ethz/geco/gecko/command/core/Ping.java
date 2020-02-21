@@ -32,7 +32,7 @@ import java.util.List;
 public class Ping extends Command {
     public Ping() {
         this.setNames(new String[]{"ping", "p"});
-        this.setDescription("Used to test if bot is still responsive.");
+        this.setDescription("Measures the time that passed between the command message and the response message.");
     }
 
     @Override

@@ -36,6 +36,7 @@ public class CommandPermissions {
 
     /**
      * Returns a Set of permitted role ID's.
+     *
      * @return the permitted role ID's
      */
     public Set<Snowflake> getPermittedRoleIDs() {
@@ -43,11 +44,24 @@ public class CommandPermissions {
     }
 
     /**
+     * Adds a permitted role ID to the command permissions.
+     *
+     * @param roleID The role ID which is permitted to use the command.
+     */
+    public void addPermittedRoleID(Snowflake roleID) {
+        permittedRoleIDs.add(roleID);
+    }
+
+    /**
      * Checks if a member is permitted (has one the roles specified as permitted in the command)
+     *
      * @param member The member to check
      * @return Whether or not a member is permitted.
      */
     public boolean isMemberPermitted(Member member) {
+        if (member == null)
+            return false;
+
         if (permittedRoleIDs.isEmpty()) {
             return true;
         }
@@ -62,6 +76,9 @@ public class CommandPermissions {
     }
 
     public boolean isUserPermitted(User user) {
+        if (user == null)
+            return false;
+
         return isMemberPermitted(GECko.mainGuild.getMemberById(user.getId()).block());
     }
 }

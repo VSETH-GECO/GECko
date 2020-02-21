@@ -116,7 +116,7 @@ public class CommandHandler {
             }
 
             if (command != null) {
-                if (!messageCreateEvent.getGuildId().isPresent() || command.isAllowPrivateMessage()) {
+                if (messageCreateEvent.getGuildId().isEmpty() || command.isAllowPrivateMessage()) {
                     if (command.isForcePrivateReply()) {
                         Message newMsg = injectPrivateChannel(msg).block();
                         if (newMsg != null) {
@@ -124,7 +124,7 @@ public class CommandHandler {
                         }
                     }
 
-                    if ((!messageCreateEvent.getMember().isPresent() && msg.getAuthor().isPresent() && command.getPermissions().isUserPermitted(msg.getAuthor().get())) || command.getPermissions().isMemberPermitted(messageCreateEvent.getMember().get())) {
+                    if ((messageCreateEvent.getMember().isEmpty() && msg.getAuthor().isPresent() && command.getPermissions().isUserPermitted(msg.getAuthor().get())) || command.getPermissions().isMemberPermitted(messageCreateEvent.getMember().get())) {
                         List<String> args;
                         if (!command.isMentionCommand()) {
                             args = tokens.subList(1, tokens.size());

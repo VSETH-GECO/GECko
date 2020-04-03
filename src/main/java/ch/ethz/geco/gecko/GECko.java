@@ -24,6 +24,8 @@ import ch.ethz.geco.g4j.obj.GECoClient;
 import ch.ethz.geco.gecko.command.CommandBank;
 import ch.ethz.geco.gecko.command.CommandHandler;
 import ch.ethz.geco.gecko.rest.WebHookServer;
+import ch.ethz.geco.gecko.ticket.TicketManager;
+import ch.ethz.geco.gecko.voice.VoiceChannelSpawner;
 import discord4j.core.DiscordClient;
 import discord4j.core.DiscordClientBuilder;
 import discord4j.core.event.EventDispatcher;
@@ -153,6 +155,12 @@ public class GECko {
 
             // Listen to messages
             discordClient.getEventDispatcher().on(MessageCreateEvent.class).subscribe(CommandHandler::handle);
+
+            // Load ticket manager
+            TicketManager.init();
+
+            // Load voice channel spawner
+            VoiceChannelSpawner.init();
 
             // Start periodic news and event updates
             MediaSynchronizer.startPeriodicCheck();

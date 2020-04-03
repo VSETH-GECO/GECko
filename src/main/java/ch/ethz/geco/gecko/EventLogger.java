@@ -95,6 +95,12 @@ class EventLogger {
         if (message.getAuthor().isEmpty() || message.getAuthor().get().isBot())
             return null;
 
+        MessageChannel messageChannel = message.getChannel().block();
+
+        // TODO: Handle private messages
+        if (messageChannel instanceof PrivateChannel)
+            return null;
+
         GuildMessageChannel channel = (GuildMessageChannel) message.getChannel().block();
 
         if (channel == null)

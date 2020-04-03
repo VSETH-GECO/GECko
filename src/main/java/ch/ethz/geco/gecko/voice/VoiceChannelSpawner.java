@@ -7,6 +7,7 @@ import discord4j.core.event.domain.VoiceStateUpdateEvent;
 import discord4j.core.event.domain.message.ReactionAddEvent;
 import discord4j.core.object.entity.Category;
 import discord4j.core.object.entity.TextChannel;
+import discord4j.core.object.entity.VoiceChannel;
 import discord4j.core.object.reaction.ReactionEmoji;
 import discord4j.core.object.util.Snowflake;
 
@@ -204,10 +205,9 @@ public class VoiceChannelSpawner {
                         scheduler.schedule(() -> {
                             // Check if channel is still existing
                             if (spawnedChannels.contains(voiceChannel.getId())) {
-                                spawnedChannels.remove(voiceChannel.getId());
-
                                 voiceChannel.getVoiceStates().count().subscribe(userCount -> {
                                     if (userCount == 0) {
+                                        spawnedChannels.remove(voiceChannel.getId());
                                         voiceChannel.delete().subscribe();
                                     }
                                 });
@@ -222,14 +222,22 @@ public class VoiceChannelSpawner {
     }
 
     public static void handleVoiceUpdate(VoiceStateUpdateEvent event) {
-        // Only if it's a temp channel
-        if (event.getCurrent().getChannelId().isPresent() && spawnedChannels.contains(event.getCurrent().getChannelId().get())) {
-            event.getCurrent().getChannel().subscribe(voiceChannel -> {
-                if (spawnedChannels.contains(voiceChannel.getId())) {
-                    spawnedChannels.remove(voiceChannel.getId());
+        Snowflake channelID;
+        if (event.getCurrent().getChannelId().isPresent()) {
+            channelID = event.getCurrent().getChannelId().get();
+        } else if (event.getOld().isPresent() && event.getOld().get().getChannelId().isPresent()) {
+            channelID = event.getOld().get().getChannelId().get();
+        } else {
+            return;
+        }
 
+        // Only if it's a temp channel
+        if (spawnedChannels.contains(channelID)) {
+            discordClient.getChannelById(channelID).cast(VoiceChannel.class).subscribe(voiceChannel -> {
+                if (spawnedChannels.contains(voiceChannel.getId())) {
                     voiceChannel.getVoiceStates().count().subscribe(userCount -> {
                         if (userCount == 0) {
+                            spawnedChannels.remove(voiceChannel.getId());
                             voiceChannel.delete().subscribe();
                         }
                     });

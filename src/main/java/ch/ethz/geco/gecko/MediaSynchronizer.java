@@ -231,15 +231,15 @@ public class MediaSynchronizer {
             return;
         }
 
+        // Remove drafts from web news
+        webNews.removeIf(News::isDraft);
+
         // Sort ascending for sanity check
         webNews.sort(Comparator.comparing(News::getPublishedAt));
 
         // Store all available news post IDs
         List<Long> webIDs = new ArrayList<>();
         webNews.forEach(post -> webIDs.add(post.getID()));
-
-        // Remove drafts from web news
-        webNews.removeIf(News::isDraft);
 
         // Remove all posts missing remotely after the first web post
         GECko.logger.debug("Deleting drafts and deleted posts.");
@@ -465,7 +465,7 @@ public class MediaSynchronizer {
     }
 
     // Pre-compile all needed patterns
-    private static final Pattern headerPattern = Pattern.compile("(#+)\\s*([^\\r\\n]+)(?>\\r\\n|\\r|\\n|$)");
+    private static final Pattern headerPattern = Pattern.compile("(?>[\\r\\n]|^)(#+)\\s+([^\\r\\n]+)(?>\\r\\n|\\r|\\n|$)");
     private static final Pattern imagePattern = Pattern.compile("!\\[[^]]*]\\(([^)]*)\\)");
     private static final Pattern nestedPattern = Pattern.compile("\\[!\\[([^]]*)]\\([^)]*\\)]\\(([^)]*)\\)");
     private static final Pattern emptyLinkPattern = Pattern.compile("\\[[^]]*]\\(\\s*\\)");

@@ -5,8 +5,9 @@ import ch.ethz.geco.gecko.command.CommandHandler;
 import ch.ethz.geco.gecko.command.CommandRegistry;
 import ch.ethz.geco.gecko.ticket.command.TicketChannel;
 import ch.ethz.geco.gecko.ticket.command.TicketSpawner;
-import ch.ethz.geco.gecko.ticket.impl.TestTicket;
-import ch.ethz.geco.gecko.ticket.impl.TestTicket2;
+import ch.ethz.geco.gecko.ticket.impl.GeneralTicket;
+import ch.ethz.geco.gecko.ticket.impl.ProtectionTicket;
+import ch.ethz.geco.gecko.ticket.impl.ReportTicket;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.ReactionAddEvent;
 import discord4j.core.object.entity.MessageChannel;
@@ -58,8 +59,9 @@ public class TicketManager {
         List<Class<? extends Ticket>> ticketClasses = new ArrayList<>();
 
         // Add new ticket types here
-        ticketClasses.add(TestTicket.class);
-        ticketClasses.add(TestTicket2.class);
+        ticketClasses.add(ProtectionTicket.class);
+        ticketClasses.add(ReportTicket.class);
+        ticketClasses.add(GeneralTicket.class);
 
         for (Class<? extends Ticket> clazz : ticketClasses) {
             try {
@@ -154,13 +156,15 @@ public class TicketManager {
 
                                     // Expire uncreated tickets after some timeout
                                     executer.schedule(() -> {
-                                        tickets.remove(channel.getId());
+                                        if (tickets.containsKey(channel.getId())) {
+                                            tickets.remove(channel.getId());
 
-                                        channel.createEmbed(spec2 -> {
-                                            spec2.setTitle("**" + ticket.getName() + "**");
-                                            spec2.setDescription("❎ Your ticket creation has expired.");
-                                            spec2.setFooter("~ Have Fun!", null);
-                                        }).subscribe();
+                                            channel.createEmbed(spec2 -> {
+                                                spec2.setTitle("**" + ticket.getName() + "**");
+                                                spec2.setDescription("❎ Your ticket creation has expired.");
+                                                spec2.setFooter("~ Have Fun!", null);
+                                            }).subscribe();
+                                        }
                                     }, TICKET_EXPIRE_SECONDS, TimeUnit.SECONDS);
                                 } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                                     e.printStackTrace();

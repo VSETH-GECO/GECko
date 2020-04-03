@@ -48,6 +48,22 @@ public class VoiceChannelSpawner {
     private static final List<Snowflake> spawnedChannels = new ArrayList<>();
 
     /**
+     * A map of user IDs to the time when they last spawned a voice channel.
+     * This is used to rate-limit users spawning voice channels.
+     */
+    private static final Map<Snowflake, Long> lastSpawned = new HashMap<>();
+
+    /**
+     * How many seconds a user must wait to spawn another voice channel.
+     */
+    private static final int SPAWN_TIMEOUT_SECONDS = 5;
+
+    /**
+     * How many seconds must pass until a voice channel expires and gets deleted.
+     */
+    private static final int EXPIRE_TIMEOUT_SECONDS = 10;
+
+    /**
      * Initializes the voice channel spawner, loading configurations and cleaning up.
      * This should be called once on startup.
      */
@@ -85,7 +101,8 @@ public class VoiceChannelSpawner {
      */
     public static void createSpawner(TextChannel textChannel) {
         textChannel.createMessage("**Voice Channel Spawner**\n" +
-                "React to this message to create a temporary voice channel. The channel will be removed if no one joins after 10 seconds or if everyone leaves.\n" +
+                "React to this message to create a temporary voice channel. The channel will be removed if no one joins after 10 seconds or if everyone leaves.\n\n" +
+                "**Note:** If you create a voice channel, you have to wait 5 seconds to create another one.\n" +
                 "\n" +
                 EMOJI_INF + " : Spawns an unlimited voice channel\n" +
                 "\n" +
@@ -149,6 +166,14 @@ public class VoiceChannelSpawner {
 
     public static void handleReaction(ReactionAddEvent event) {
         if (discordClient.getSelfId().isPresent() && !event.getUserId().equals(discordClient.getSelfId().get()) && voiceChannelSpawner.containsKey(event.getMessageId())) {
+            // Rate-limiting
+            if (lastSpawned.containsKey(event.getUserId()) && (lastSpawned.get(event.getUserId()) + SPAWN_TIMEOUT_SECONDS * 1000 > System.currentTimeMillis())) {
+                event.getMessage().flatMap(message -> message.removeReaction(event.getEmoji(), event.getUserId())).subscribe();
+                return;
+            }
+
+            lastSpawned.put(event.getUserId(), System.currentTimeMillis());
+
             if (event.getEmoji().asUnicodeEmoji().isPresent()) {
                 ReactionEmoji.Unicode unicode = event.getEmoji().asUnicodeEmoji().get();
 
@@ -212,7 +237,7 @@ public class VoiceChannelSpawner {
                                     }
                                 });
                             }
-                        }, 10, TimeUnit.SECONDS);
+                        }, EXPIRE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
                     });
                 }
             }

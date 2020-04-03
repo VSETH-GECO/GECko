@@ -21,7 +21,6 @@ package ch.ethz.geco.gecko.command;
 
 import ch.ethz.geco.gecko.command.core.Ping;
 import ch.ethz.geco.gecko.command.core.Restart;
-import ch.ethz.geco.gecko.command.misc.Test;
 import ch.ethz.geco.gecko.command.misc.Whois;
 
 /**
@@ -38,6 +37,5 @@ public class CommandBank {
 
         // Misc
         CommandRegistry.registerCommand(new Whois());
-        CommandRegistry.registerCommand(new Test());
     }
 }

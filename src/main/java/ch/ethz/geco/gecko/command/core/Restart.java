@@ -23,6 +23,7 @@ import ch.ethz.geco.gecko.GECko;
 import ch.ethz.geco.gecko.command.Command;
 import ch.ethz.geco.gecko.command.CommandUtils;
 import discord4j.core.object.entity.Message;
+import discord4j.core.object.util.Snowflake;
 
 import java.util.List;
 
@@ -30,6 +31,8 @@ public class Restart extends Command {
     public Restart() {
         this.setName("restart");
         this.setDescription("Restarts the bot.");
+        this.getPermissions().addPermittedRoleID(Snowflake.of(248454555438678017L));
+        this.getPermissions().addPermittedRoleID(Snowflake.of(687777083044134919L));
     }
 
     @Override

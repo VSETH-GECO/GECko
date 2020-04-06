@@ -17,7 +17,7 @@
 
         <encoder>
             <charset>UTF-8</charset>
-            <Pattern>%date{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{20} - %msg%n</Pattern>
+            <Pattern>%date{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{0} - %msg%n</Pattern>
         </encoder>
     </appender>
 
@@ -29,7 +29,7 @@
         </filter>
         <encoder>
             <charset>UTF-8</charset>
-            <Pattern>%date{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{20} - %msg%n</Pattern>
+            <Pattern>%date{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{0} - %msg%n</Pattern>
         </encoder>
     </appender>
 
@@ -55,7 +55,7 @@
 
         <encoder>
             <charset>UTF-8</charset>
-            <Pattern>%date{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{20} - %msg%n</Pattern>
+            <Pattern>%date{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{0} - %msg%n</Pattern>
         </encoder>
     </appender>
 
@@ -81,7 +81,7 @@
 
         <encoder>
             <charset>UTF-8</charset>
-            <Pattern>%date{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{20} - %msg%n</Pattern>
+            <Pattern>%date{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{0} - %msg%n</Pattern>
         </encoder>
     </appender>
 

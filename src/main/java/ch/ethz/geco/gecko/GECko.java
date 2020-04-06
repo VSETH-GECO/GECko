@@ -101,7 +101,7 @@ public class GECko {
 
     public static void start(String token, String prefix, String configPath) {
         logger.info("GECkO");
-        logger.info("The official GECO Discord bot. 2016 - 2018, Licensed under Unlicense.");
+        logger.info("The official GECo Discord bot. 2016 - 2020, Licensed under Unlicense.");
 
         // Initialize config manager
         if (configPath != null) {

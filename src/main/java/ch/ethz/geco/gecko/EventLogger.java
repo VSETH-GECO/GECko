@@ -19,6 +19,10 @@ import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.MessageDeleteEvent;
 import discord4j.core.event.domain.message.MessageUpdateEvent;
 import discord4j.core.object.entity.*;
+import discord4j.core.object.entity.channel.Category;
+import discord4j.core.object.entity.channel.GuildMessageChannel;
+import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.object.entity.channel.PrivateChannel;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.LoggerFactory;
 
@@ -119,7 +123,7 @@ class EventLogger {
 
         msg += "#" + channel.getName() + " > " +
                 message.getAuthor().get().getUsername() + ": " +
-                message.getContent().orElse("");
+                message.getContent();
 
         return msg;
     }

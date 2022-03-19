@@ -4,10 +4,10 @@ import ch.ethz.geco.gecko.GECko;
 import ch.ethz.geco.gecko.command.Command;
 import ch.ethz.geco.gecko.command.CommandUtils;
 import ch.ethz.geco.gecko.ticket.TicketManager;
-import discord4j.core.object.entity.Channel;
+import discord4j.common.util.Snowflake;
 import discord4j.core.object.entity.Message;
-import discord4j.core.object.entity.TextChannel;
-import discord4j.core.object.util.Snowflake;
+import discord4j.core.object.entity.channel.Channel;
+import discord4j.core.object.entity.channel.TextChannel;
 
 import java.util.List;
 import java.util.regex.Matcher;

@@ -3,13 +3,13 @@ package ch.ethz.geco.gecko.voice;
 import ch.ethz.geco.gecko.ConfigManager;
 import ch.ethz.geco.gecko.command.CommandRegistry;
 import ch.ethz.geco.gecko.voice.command.VCSpawner;
+import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.VoiceStateUpdateEvent;
 import discord4j.core.event.domain.message.ReactionAddEvent;
-import discord4j.core.object.entity.Category;
-import discord4j.core.object.entity.TextChannel;
-import discord4j.core.object.entity.VoiceChannel;
+import discord4j.core.object.entity.channel.Category;
+import discord4j.core.object.entity.channel.TextChannel;
+import discord4j.core.object.entity.channel.VoiceChannel;
 import discord4j.core.object.reaction.ReactionEmoji;
-import discord4j.core.object.util.Snowflake;
 
 import java.io.*;
 import java.util.*;
@@ -165,7 +165,7 @@ public class VoiceChannelSpawner {
     }
 
     public static void handleReaction(ReactionAddEvent event) {
-        if (discordClient.getSelfId().isPresent() && !event.getUserId().equals(discordClient.getSelfId().get()) && voiceChannelSpawner.containsKey(event.getMessageId())) {
+        if (!event.getUserId().equals(discordClient.getSelfId()) && voiceChannelSpawner.containsKey(event.getMessageId())) {
             // Rate-limiting
             if (lastSpawned.containsKey(event.getUserId()) && (lastSpawned.get(event.getUserId()) + SPAWN_TIMEOUT_SECONDS * 1000 > System.currentTimeMillis())) {
                 event.getMessage().flatMap(message -> message.removeReaction(event.getEmoji(), event.getUserId())).subscribe();

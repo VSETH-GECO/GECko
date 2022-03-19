@@ -124,15 +124,7 @@ public class ConfigManager {
         addCoreField("main_mainChannelID", "[Main] Please specify the main channel ID: ");
         addCoreField("main_defaultPrefix", "[Main] Please specify a default command prefix: ");
 
-        addCoreField("media_newsChannelID", "[Media] Please specify the news channel ID: ");
-        addCoreField("media_eventChannelID", "[Media] Please specify the event channel ID: ");
-
-        addCoreField("git_botRepo", "[Git] Please specify the SSH remote repository of the bot: ");
-        addCoreField("git_privateKeyFile", "[Git] Please specify the private key file: ");
-        addCoreField("git_knownHostsFile", "[Git] Please specify known hosts file: ");
-
         addCoreField("geco_apiKey", "[GECO] Please specify the GECO API Key: ");
-        addCoreField("pastebin_apiKey", "[Pastebin] Please specify the Pastebin API key: ");
     }
 
     public static String getProperty(String key) {

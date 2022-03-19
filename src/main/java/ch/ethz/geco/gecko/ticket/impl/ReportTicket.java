@@ -1,6 +1,6 @@
 package ch.ethz.geco.gecko.ticket.impl;
 
-import discord4j.core.object.util.Snowflake;
+import discord4j.common.util.Snowflake;
 
 public class ReportTicket extends BaseTicket {
     public ReportTicket(Snowflake issuer) {

@@ -1,7 +1,7 @@
 package ch.ethz.geco.gecko.ticket.impl;
 
 import ch.ethz.geco.gecko.ticket.Ticket;
-import discord4j.core.object.util.Snowflake;
+import discord4j.common.util.Snowflake;
 
 import java.util.ArrayList;
 import java.util.List;

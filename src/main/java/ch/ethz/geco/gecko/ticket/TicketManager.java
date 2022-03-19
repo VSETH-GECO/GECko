@@ -8,13 +8,13 @@ import ch.ethz.geco.gecko.ticket.command.TicketSpawner;
 import ch.ethz.geco.gecko.ticket.impl.GeneralTicket;
 import ch.ethz.geco.gecko.ticket.impl.ProtectionTicket;
 import ch.ethz.geco.gecko.ticket.impl.ReportTicket;
+import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.ReactionAddEvent;
-import discord4j.core.object.entity.MessageChannel;
-import discord4j.core.object.entity.TextChannel;
 import discord4j.core.object.entity.User;
+import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.object.reaction.ReactionEmoji;
-import discord4j.core.object.util.Snowflake;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -136,7 +136,7 @@ public class TicketManager {
     }
 
     public static void handleReact(ReactionAddEvent reactEvent) {
-        if (discordClient.getSelfId().isPresent() && !reactEvent.getUserId().equals(discordClient.getSelfId().get()) && ticketSpawner.equals(reactEvent.getMessageId())) {
+        if (!reactEvent.getUserId().equals(discordClient.getSelfId()) && ticketSpawner.equals(reactEvent.getMessageId())) {
             if (reactEvent.getEmoji().asUnicodeEmoji().isPresent()) {
                 String reactionEmoji = reactEvent.getEmoji().asUnicodeEmoji().get().getRaw();
 
@@ -180,13 +180,12 @@ public class TicketManager {
     }
 
     public static void handleMessage(MessageCreateEvent messageEvent) {
-        if (discordClient.getSelfId().isPresent() &&
-                messageEvent.getMessage().getAuthor().isPresent() &&
+        if (messageEvent.getMessage().getAuthor().isPresent() &&
                 !messageEvent.getMessage().getAuthor().get().isBot() &&
                 tickets.containsKey(messageEvent.getMessage().getChannelId())) {
             Ticket ticket = tickets.get(messageEvent.getMessage().getChannelId());
-            if (messageEvent.getMessage().getContent().isPresent()) {
-                if (messageEvent.getMessage().getContent().get().strip().equals(CommandHandler.getDefaultPrefix() + "cancel")) {
+            if (!messageEvent.getMessage().getContent().isBlank()) {
+                if (messageEvent.getMessage().getContent().strip().equals(CommandHandler.getDefaultPrefix() + "cancel")) {
                     tickets.remove(messageEvent.getMessage().getChannelId());
 
                     messageEvent.getMessage().getChannel().flatMap(channel -> channel.createEmbed(spec -> {
@@ -198,7 +197,7 @@ public class TicketManager {
                     return;
                 }
 
-                ticket.getAnswers().add(messageEvent.getMessage().getContent().get());
+                ticket.getAnswers().add(messageEvent.getMessage().getContent());
 
                 if (ticket.nextQuestion() != null) {
                     messageEvent.getMessage().getChannel().flatMap(channel -> channel.createEmbed(spec -> {

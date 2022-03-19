@@ -1,6 +1,6 @@
 package ch.ethz.geco.gecko.ticket;
 
-import discord4j.core.object.util.Snowflake;
+import discord4j.common.util.Snowflake;
 
 import java.util.List;
 

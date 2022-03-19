@@ -20,8 +20,8 @@
 package ch.ethz.geco.gecko.command;
 
 import discord4j.core.object.entity.Message;
-import discord4j.core.object.entity.MessageChannel;
-import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.spec.legacy.LegacyEmbedCreateSpec;
 import reactor.core.publisher.Mono;
 
 import java.util.function.Consumer;
@@ -45,7 +45,7 @@ public class CommandUtils {
      * @param embed the embed to send
      * @return the response message
      */
-    public static Mono<Message> respond(Message msg, Consumer<EmbedCreateSpec> embed) {
+    public static Mono<Message> respond(Message msg, Consumer<LegacyEmbedCreateSpec> embed) {
         return respond(msg.getChannel(), embed);
     }
 
@@ -67,7 +67,7 @@ public class CommandUtils {
      * @param embed   the embed to send
      * @return the response message
      */
-    public static Mono<Message> respond(Mono<MessageChannel> channel, Consumer<EmbedCreateSpec> embed) {
+    public static Mono<Message> respond(Mono<MessageChannel> channel, Consumer<LegacyEmbedCreateSpec> embed) {
         return channel.flatMap(messageChannel -> messageChannel.createMessage(messageCreateSpec -> messageCreateSpec.setEmbed(embed)));
     }
 
@@ -89,7 +89,7 @@ public class CommandUtils {
      * @param embed the new embed
      * @return the edited message
      */
-    public static Mono<Message> editMessage(Message msg, Consumer<EmbedCreateSpec> embed) {
+    public static Mono<Message> editMessage(Message msg, Consumer<LegacyEmbedCreateSpec> embed) {
         return msg.edit(messageEditSpec -> messageEditSpec.setEmbed(embed));
     }
 

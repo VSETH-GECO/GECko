@@ -20,9 +20,9 @@
 package ch.ethz.geco.gecko.command;
 
 import ch.ethz.geco.gecko.GECko;
+import discord4j.common.util.Snowflake;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.User;
-import discord4j.core.object.util.Snowflake;
 
 import java.util.HashSet;
 import java.util.Set;

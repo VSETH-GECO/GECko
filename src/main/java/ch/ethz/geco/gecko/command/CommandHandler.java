@@ -22,8 +22,9 @@ package ch.ethz.geco.gecko.command;
 import ch.ethz.geco.gecko.ErrorHandler;
 import ch.ethz.geco.gecko.GECko;
 import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.data.stored.MessageBean;
 import discord4j.core.object.entity.Message;
+import discord4j.discordjson.json.ImmutableMessageData;
+import discord4j.discordjson.json.MessageData;
 import org.apache.commons.text.StrTokenizer;
 import org.jetbrains.annotations.Contract;
 import reactor.core.publisher.Mono;
@@ -67,10 +68,13 @@ public class CommandHandler {
                 // Access private field of message
                 Field dataField = msg.getClass().getDeclaredField("data");
                 dataField.setAccessible(true);
-                MessageBean data = (MessageBean) dataField.get(msg);
+                ImmutableMessageData data = (ImmutableMessageData) dataField.get(msg);
 
-                data.setChannelId(privateChannel.getId().asLong());
+                Field channelIDField = data.getClass().getDeclaredField("channelId_value");
+                channelIDField.setAccessible(true);
+                channelIDField.setLong(data, privateChannel.getId().asLong());
 
+                channelIDField.setAccessible(false);
                 dataField.setAccessible(false);
             } catch (NoSuchFieldException | IllegalAccessException e) {
                 ErrorHandler.handleError(e);
@@ -88,10 +92,10 @@ public class CommandHandler {
     public static void handle(MessageCreateEvent messageCreateEvent) {
         Message message = messageCreateEvent.getMessage();
 
-        if (!message.getContent().isPresent())
+        if (message.getContent().isBlank())
             return;
 
-        String text = message.getContent().get();
+        String text = message.getContent();
 
         Arrays.stream(text.split("\n")).forEach((line) -> {
             // Make new modifiable message object
@@ -104,7 +108,7 @@ public class CommandHandler {
             // Determine type of command
             Command command = null;
             if (tokens.size() > 0) {
-                if (GECko.discordClient.getSelfId().isPresent() && tokens.get(0).equals("<@" + GECko.discordClient.getSelfId().get() + ">")) {
+                if (tokens.get(0).equals("<@" + GECko.discordClient.getSelfId() + ">")) {
                     if (tokens.size() > 1) {
                         command = CommandRegistry.getMentionCommand(tokens.get(1));
                     } else {

@@ -23,24 +23,22 @@ import ch.ethz.geco.g4j.impl.DefaultGECoClient;
 import ch.ethz.geco.g4j.obj.GECoClient;
 import ch.ethz.geco.gecko.command.CommandBank;
 import ch.ethz.geco.gecko.command.CommandHandler;
-import ch.ethz.geco.gecko.rest.WebHookServer;
 import ch.ethz.geco.gecko.ticket.TicketManager;
 import ch.ethz.geco.gecko.voice.VoiceChannelSpawner;
-import discord4j.core.DiscordClient;
+import discord4j.common.util.Snowflake;
 import discord4j.core.DiscordClientBuilder;
-import discord4j.core.event.EventDispatcher;
+import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.Guild;
-import discord4j.core.object.entity.TextChannel;
-import discord4j.core.object.util.Snowflake;
+import discord4j.core.object.entity.channel.TextChannel;
 import org.slf4j.LoggerFactory;
 
 public class GECko {
     /**
      * The Discord client used by the bot.
      */
-    public static DiscordClient discordClient;
+    public static GatewayDiscordClient discordClient;
 
     /**
      * The GECo client used by the bot.
@@ -96,7 +94,6 @@ public class GECko {
         }
 
         GECko.start(token, prefix, configPath);
-        new WebHookServer(8080);
     }
 
     public static void start(String token, String prefix, String configPath) {
@@ -119,12 +116,9 @@ public class GECko {
             CommandHandler.setDefaultPrefix(ConfigManager.getProperty("main_defaultPrefix"));
         }
 
-        DiscordClientBuilder builder = new DiscordClientBuilder(ConfigManager.getProperty("main_token"));
-        discordClient = builder.build();
+        discordClient = DiscordClientBuilder.create(ConfigManager.getProperty("main_token")).build().login().block();
 
-        EventDispatcher eventDispatcher = discordClient.getEventDispatcher();
-
-        eventDispatcher.on(ReadyEvent.class).subscribe(readyEvent -> {
+        discordClient.getEventDispatcher().on(ReadyEvent.class).subscribe(readyEvent -> {
             mainChannel = discordClient.getChannelById(Snowflake.of(ConfigManager.getProperties().getProperty("main_mainChannelID")))
                     .ofType(TextChannel.class).block();
 
@@ -135,7 +129,7 @@ public class GECko {
             }
         });
 
-        discordClient.login().block();
+        discordClient.onDisconnect().block();
     }
 
     /**
@@ -161,9 +155,6 @@ public class GECko {
 
             // Load voice channel spawner
             VoiceChannelSpawner.init();
-
-            // Start periodic news and event updates
-            MediaSynchronizer.startPeriodicCheck();
 
             // Start event logger
             EventLogger.attachTo(discordClient.getEventDispatcher());

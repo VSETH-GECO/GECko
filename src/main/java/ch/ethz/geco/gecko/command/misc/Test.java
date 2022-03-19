@@ -19,7 +19,6 @@
 
 package ch.ethz.geco.gecko.command.misc;
 
-import ch.ethz.geco.gecko.MediaSynchronizer;
 import ch.ethz.geco.gecko.command.Command;
 import discord4j.core.object.entity.Message;
 
@@ -32,8 +31,5 @@ public class Test extends Command {
 
     @Override
     public void execute(Message msg, List<String> args) {
-        MediaSynchronizer.init();
-        MediaSynchronizer.loadNews();
-        MediaSynchronizer.loadEvents();
     }
 }

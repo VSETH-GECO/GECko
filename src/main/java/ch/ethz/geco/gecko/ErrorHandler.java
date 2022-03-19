@@ -19,7 +19,8 @@
 
 package ch.ethz.geco.gecko;
 
-import java.awt.*;
+import discord4j.rest.util.Color;
+
 import java.util.List;
 import java.util.*;
 
@@ -93,9 +94,9 @@ public class ErrorHandler {
                         .append("(").append(traceElement.getFileName()).append(":").append(traceElement.getLineNumber()).append(")").append("\n");
             }
 
-            if (GECko.discordClient.isConnected()) {
+            if (GECko.discordClient != null) {
                 GECko.mainChannel.createMessage(messageCreateSpec -> messageCreateSpec.setEmbed(embedCreateSpec -> embedCreateSpec
-                        .setColor(new Color(255, 0, 0))
+                        .setColor(Color.of(255, 0, 0))
                         .setTitle(e.getClass().getSimpleName() + ": " + e.getMessage())
                         .setDescription(builder.toString())))
                         .doOnError(err -> {

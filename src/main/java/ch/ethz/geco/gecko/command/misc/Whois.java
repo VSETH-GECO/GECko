@@ -24,8 +24,8 @@ import ch.ethz.geco.g4j.obj.User;
 import ch.ethz.geco.gecko.GECko;
 import ch.ethz.geco.gecko.command.Command;
 import ch.ethz.geco.gecko.command.CommandUtils;
+import discord4j.common.util.Snowflake;
 import discord4j.core.object.entity.Message;
-import discord4j.core.object.util.Snowflake;
 
 import java.util.List;
 import java.util.NoSuchElementException;
